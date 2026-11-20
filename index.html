@@ -1,0 +1,4441 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Algorithm Visualizer — Interactive Pathfinding & Sudoku Solvers</title>
+<meta name="description" content="PATHLAB is a beginner-friendly interactive pathfinding visualizer and algorithm laboratory. Compare 8 search algorithms with live statistics, charts, and explanations." />
+<style>
+  :root {
+    /* Color Palette - 8px Grid & CSS Variables */
+    --bg-main: #060a12;
+    --bg-gradient: radial-gradient(1200px 600px at 80% -10%, #0d223a 0%, #060a12 60%);
+    --bg-surface: #0e1726;
+    --bg-surface-elevated: #152238;
+    --bg-surface-active: #1c2e4a;
+    --border-subtle: #1e304b;
+    --border-focus: #38bdf8;
+    --border-strong: #2a4365;
+
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+
+    --color-cyan: #22d3ee;
+    --color-blue: #3b82f6;
+    --color-indigo: #6366f1;
+    --color-green: #10b981;
+    --color-red: #f43f5e;
+    --color-amber: #f59e0b;
+    --color-purple: #a855f7;
+    --color-wall: #223249;
+
+    --space-1: 8px;
+    --space-2: 16px;
+    --space-3: 24px;
+    --space-4: 32px;
+    --space-5: 40px;
+    --space-6: 48px;
+
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-full: 9999px;
+
+    --shadow-sm: 0 2px 4px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+    --shadow-glow: 0 0 20px rgba(34, 211, 238, 0.25);
+
+    --transition-fast: 0.15s ease;
+    --transition-normal: 0.25s ease;
+  }
+
+  /* Theme Switching Variables */
+  [data-theme="light"] {
+    --bg-main: #f8fafc;
+    --bg-gradient: radial-gradient(1200px 600px at 80% -10%, #e0f2fe 0%, #f8fafc 60%);
+    --bg-surface: #ffffff;
+    --bg-surface-elevated: #f1f5f9;
+    --bg-surface-active: #e2e8f0;
+    --border-subtle: #cbd5e1;
+    --border-focus: #0284c7;
+    --border-strong: #94a3b8;
+
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+
+    --color-cyan: #0284c7;
+    --color-blue: #2563eb;
+    --color-indigo: #4f46e5;
+    --color-green: #059669;
+    --color-red: #e11d48;
+    --color-amber: #d97706;
+    --color-purple: #7e22ce;
+    --color-wall: #334155;
+  }
+
+
+  /* Reset & Base */
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg-gradient);
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--color-cyan); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* Accessibility: Prefers Reduced Motion */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+
+  /* =========================================================
+     SAVE & LOAD — Projects Module Styles (8px grid system)
+     ========================================================= */
+
+  /* Toast notification */
+  .proj-toast {
+    position: fixed;
+    bottom: var(--space-4);
+    right: var(--space-4);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    font-weight: 600;
+    z-index: 9999;
+    display: none;
+    max-width: 420px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    animation: toastIn 0.2s ease;
+  }
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .proj-toast-success { background: var(--bg-surface-elevated); border: 1px solid var(--color-green); color: var(--color-green); }
+  .proj-toast-error   { background: var(--bg-surface-elevated); border: 1px solid var(--color-red);   color: var(--color-red); }
+
+  /* Modal overlay */
+  .proj-modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.65);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 9000;
+    padding: var(--space-3);
+  }
+  .proj-modal {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+    max-width: 480px;
+    width: 100%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  }
+  .proj-modal h3 { font-size: 18px; font-weight: 800; margin-bottom: var(--space-2); }
+  .proj-modal-actions { display: flex; gap: var(--space-1); justify-content: flex-end; margin-top: var(--space-3); }
+  .proj-modal label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--text-secondary); }
+  .proj-modal input[type="text"] {
+    width: 100%; padding: 10px 12px;
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary); font-size: 15px;
+    font-family: inherit;
+    outline: none; transition: border-color var(--transition-fast);
+  }
+  .proj-modal input[type="text"]:focus { border-color: var(--border-focus); }
+  .proj-save-error { font-size: 12px; color: var(--color-red); margin-top: 6px; min-height: 16px; }
+
+  /* Projects View */
+  #viewProjects {
+    padding: var(--space-3) var(--space-3) var(--space-6);
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .proj-view-header {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: var(--space-2); flex-wrap: wrap;
+    margin-bottom: var(--space-4);
+    padding-bottom: var(--space-3);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .proj-view-title { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
+  .proj-count-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 24px; height: 24px; padding: 0 8px;
+    background: var(--color-cyan); color: #04121f;
+    font-size: 12px; font-weight: 800;
+    border-radius: var(--radius-full);
+    margin-left: 8px;
+  }
+  .proj-toolbar {
+    display: flex; gap: var(--space-1); align-items: center; flex-wrap: wrap;
+    margin-bottom: var(--space-3);
+  }
+  .proj-search-input {
+    padding: 8px 14px;
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary); font-size: 14px;
+    font-family: inherit; min-width: 240px;
+    outline: none; transition: border-color var(--transition-fast);
+  }
+  .proj-search-input:focus { border-color: var(--border-focus); }
+  .proj-filter-select {
+    padding: 8px 12px;
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary); font-size: 14px;
+    font-family: inherit; cursor: pointer;
+  }
+
+  /* Project Card */
+  .proj-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+    margin-bottom: var(--space-2);
+    display: flex; align-items: center;
+    gap: var(--space-3); flex-wrap: wrap;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  }
+  .proj-card:hover { border-color: var(--border-focus); box-shadow: 0 4px 16px rgba(0,0,0,0.25); }
+  .proj-card[data-type="pathfinder"]:hover { border-color: var(--color-cyan); }
+  .proj-card[data-type="sudoku"]:hover { border-color: var(--color-purple); }
+  .proj-card-left { display: flex; align-items: center; gap: var(--space-2); flex: 1; min-width: 0; }
+  .proj-card-icon { font-size: 32px; flex-shrink: 0; }
+  .proj-card-info { flex: 1; min-width: 0; }
+  .proj-badge {
+    display: inline-block; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    padding: 2px 8px; border-radius: var(--radius-full);
+    margin-bottom: 4px;
+  }
+  .proj-badge-path   { background: rgba(34,211,238,0.15); color: var(--color-cyan);   border: 1px solid rgba(34,211,238,0.3); }
+  .proj-badge-sudoku { background: rgba(168,85,247,0.15);  color: var(--color-purple); border: 1px solid rgba(168,85,247,0.3); }
+  .proj-name { font-size: 16px; font-weight: 700; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .proj-meta { font-size: 12px; color: var(--text-muted); }
+  .proj-card-actions { display: flex; gap: 6px; flex-shrink: 0; flex-wrap: wrap; }
+  .proj-inline-rename {
+    font-size: 15px; font-weight: 700;
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-focus);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary); padding: 4px 8px;
+    font-family: inherit; outline: none;
+    width: 100%;
+  }
+
+  /* Empty State */
+  .proj-empty {
+    text-align: center; padding: var(--space-10) var(--space-4);
+    color: var(--text-muted);
+  }
+  .proj-empty-icon { font-size: 56px; margin-bottom: var(--space-3); }
+  .proj-empty-title { font-size: 20px; font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-2); }
+  .proj-empty-desc { font-size: 14px; line-height: 1.6; max-width: 480px; margin: 0 auto; }
+
+  /* Layout */
+  .app-container {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: var(--space-3) var(--space-2) var(--space-6);
+  }
+
+  /* Header */
+  header.app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    margin-bottom: var(--space-3);
+    padding-bottom: var(--space-2);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .brand-logo {
+    width: 38px;
+    height: 38px;
+    background: linear-gradient(135deg, var(--color-cyan), var(--color-blue));
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #04121f;
+    font-weight: 900;
+    font-size: 20px;
+    box-shadow: 0 0 16px rgba(34, 211, 238, 0.4);
+  }
+
+  h1.brand-title {
+    margin: 0;
+    font-size: 24px;
+    letter-spacing: -0.5px;
+    font-weight: 800;
+  }
+  .brand-title span { color: var(--color-cyan); }
+  .brand-subtitle {
+    margin: 2px 0 0 0;
+    color: var(--text-secondary);
+    font-size: 13px;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    flex-wrap: wrap;
+  }
+
+  /* Buttons & Controls */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-surface-elevated);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    user-select: none;
+    white-space: nowrap;
+    text-decoration: none;
+  }
+
+  .btn:hover:not(:disabled) {
+    background: var(--bg-surface-active);
+    border-color: var(--color-cyan);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .btn:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--color-cyan), var(--color-blue));
+    color: #04121f;
+    border: none;
+    font-weight: 700;
+    box-shadow: 0 2px 10px rgba(34, 211, 238, 0.35);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, #38e1fc, #60a5fa);
+    box-shadow: 0 4px 16px rgba(34, 211, 238, 0.5);
+    color: #04121f;
+  }
+
+  .btn-danger {
+    background: rgba(244, 63, 94, 0.15);
+    border-color: rgba(244, 63, 94, 0.3);
+    color: #fda4af;
+  }
+  .btn-danger:hover:not(:disabled) {
+    background: rgba(244, 63, 94, 0.25);
+    border-color: var(--color-red);
+    color: #fff;
+  }
+
+  .btn-warning {
+    background: rgba(245, 158, 11, 0.15);
+    border-color: rgba(245, 158, 11, 0.3);
+    color: #fde68a;
+  }
+  .btn-warning:hover:not(:disabled) {
+    background: rgba(245, 158, 11, 0.25);
+    border-color: var(--color-amber);
+    color: #fff;
+  }
+
+  .btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: var(--radius-sm);
+  }
+
+  /* Quick Start Guide Card */
+  .guide-card {
+    background: linear-gradient(135deg, #0e1e36, #0e1726);
+    border: 1px solid #1e3a5f;
+    border-radius: var(--radius-lg);
+    padding: var(--space-2);
+    margin-bottom: var(--space-2);
+    position: relative;
+    box-shadow: var(--shadow-sm);
+    transition: all var(--transition-normal);
+  }
+  .guide-card.collapsed { display: none; }
+  .guide-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-1);
+  }
+  .guide-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--color-cyan);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .guide-steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--space-2);
+    margin-top: var(--space-1);
+  }
+  .guide-step {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+  }
+  .step-num {
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    border-radius: var(--radius-full);
+    background: rgba(34, 211, 238, 0.15);
+    border: 1px solid var(--color-cyan);
+    color: var(--color-cyan);
+    font-weight: 700;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Control Dashboard / Toolbar */
+  .control-dashboard {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: var(--space-2);
+    margin-bottom: var(--space-2);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    box-shadow: var(--shadow-md);
+  }
+
+  .toolbar-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+  }
+
+  .toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    flex-wrap: wrap;
+  }
+
+  .group-label {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-right: 4px;
+  }
+
+  /* Select & Inputs */
+  .select-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+  }
+  select.custom-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+    padding: 8px 34px 8px 12px;
+    border-radius: var(--radius-md);
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+    transition: border-color var(--transition-fast);
+  }
+  select.custom-select:hover {
+    border-color: var(--color-cyan);
+  }
+  select.custom-select:focus {
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+  }
+  select.custom-select optgroup {
+    background: var(--bg-surface);
+    color: var(--text-muted);
+    font-weight: 700;
+  }
+  select.custom-select option {
+    background: var(--bg-surface-elevated);
+    color: var(--text-primary);
+    padding: 6px;
+  }
+  .select-arrow {
+    position: absolute;
+    right: 12px;
+    pointer-events: none;
+    color: var(--text-secondary);
+    font-size: 11px;
+  }
+
+  /* Speed Control */
+  .speed-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 4px 10px;
+  }
+  .speed-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 600;
+  }
+  .speed-slider {
+    accent-color: var(--color-cyan);
+    width: 90px;
+    cursor: pointer;
+  }
+  .speed-indicator {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--color-cyan);
+    min-width: 44px;
+    text-align: center;
+  }
+
+  /* Algorithm Quick Info Banner */
+  .algo-summary-card {
+    background: rgba(14, 23, 38, 0.7);
+    border: 1px solid var(--border-subtle);
+    border-left: 4px solid var(--color-cyan);
+    border-radius: var(--radius-md);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    font-size: 13px;
+    flex-wrap: wrap;
+  }
+  .algo-summary-left {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .algo-name-tag {
+    font-weight: 800;
+    font-size: 14px;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .algo-desc-inline {
+    color: var(--text-secondary);
+  }
+  .algo-badges {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    font-size: 11.5px;
+    font-weight: 700;
+    border-radius: var(--radius-full);
+  }
+  .badge-success {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+  .badge-warning {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+  }
+  .badge-info {
+    background: rgba(34, 211, 238, 0.12);
+    color: var(--color-cyan);
+    border: 1px solid rgba(34, 211, 238, 0.25);
+  }
+
+  /* Grid Legend */
+  .grid-legend {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    padding: 4px 6px;
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-1);
+  }
+  .legend-items {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .swatch {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.15);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 800;
+  }
+  .swatch.start { background: linear-gradient(135deg, #10b981, #059669); color: #fff; }
+  .swatch.end { background: linear-gradient(135deg, #f43f5e, #e11d48); color: #fff; }
+  .swatch.wall { background: var(--color-wall); border-color: #3b4e6b; }
+  .swatch.vis { background: linear-gradient(135deg, #0284c7, #1e40af); }
+  .swatch.path { background: linear-gradient(135deg, #fbbf24, #d97706); }
+  .legend-tip {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: italic;
+  }
+
+  /* Grid Board - Focus of Screen */
+  .board-wrapper {
+    background: #090e18;
+    border: 2px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 8px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+    position: relative;
+    user-select: none;
+    touch-action: none;
+  }
+  .board {
+    display: grid;
+    gap: 1.5px;
+    background: #060911;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    user-select: none;
+    touch-action: none;
+  }
+  .cell {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background: #0e1625;
+    border-radius: 2px;
+    transition: background 0.05s ease, transform 0.05s ease;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 900;
+    color: #fff;
+    user-select: none;
+  }
+  .cell:hover {
+    filter: brightness(1.2);
+  }
+  .cell.wall {
+    background: var(--color-wall) !important;
+    border: 1px solid #334764;
+    animation: wallPop 0.15s ease-out;
+  }
+  .cell.start {
+    background: linear-gradient(135deg, #10b981, #047857) !important;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.4);
+    cursor: grab;
+  }
+  .cell.start:active { cursor: grabbing; }
+  .cell.end {
+    background: linear-gradient(135deg, #f43f5e, #be123c) !important;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.4);
+    cursor: grab;
+  }
+  .cell.end:active { cursor: grabbing; }
+
+  .cell.visited {
+    background: linear-gradient(135deg, #0284c7, #1e40af);
+    animation: popVisited 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  .cell.frontier {
+    background: linear-gradient(135deg, var(--color-cyan), var(--color-blue));
+  }
+  .cell.path {
+    background: linear-gradient(135deg, #fbbf24, #d97706);
+    box-shadow: 0 0 10px rgba(251, 191, 36, 0.4);
+    animation: popPath 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    z-index: 2;
+  }
+
+  @keyframes wallPop {
+    0% { transform: scale(0.6); }
+    100% { transform: scale(1); }
+  }
+  @keyframes popVisited {
+    0% { transform: scale(0.3); border-radius: 50%; opacity: 0.2; }
+    50% { transform: scale(1.15); border-radius: 20%; }
+    100% { transform: scale(1); border-radius: 2px; opacity: 1; }
+  }
+  @keyframes popPath {
+    0% { transform: scale(0.4); opacity: 0; }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  /* Status Banner / Feedback */
+  .status-banner {
+    margin-top: var(--space-2);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    font-size: 13.5px;
+    transition: all var(--transition-fast);
+  }
+  .status-banner.success {
+    border-color: rgba(16, 185, 129, 0.4);
+    background: rgba(16, 185, 129, 0.08);
+    color: #34d399;
+  }
+  .status-banner.error {
+    border-color: rgba(244, 63, 94, 0.4);
+    background: rgba(244, 63, 94, 0.08);
+    color: #fda4af;
+  }
+  .status-banner.running {
+    border-color: rgba(34, 211, 238, 0.4);
+    background: rgba(34, 211, 238, 0.08);
+    color: var(--color-cyan);
+  }
+
+  /* Statistics Dashboard */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: var(--space-1);
+    margin-top: var(--space-2);
+  }
+  @media(max-width: 900px) {
+    .stats-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media(max-width: 600px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  .stat-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .stat-title {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .stat-val {
+    font-size: 20px;
+    font-weight: 800;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    margin: 4px 0 2px;
+    color: var(--text-primary);
+  }
+  .stat-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  /* Educational Panels: Compare & Learn */
+  .tabs-container {
+    margin-top: var(--space-4);
+  }
+  .tabs-nav {
+    display: flex;
+    gap: var(--space-1);
+    border-bottom: 2px solid var(--border-subtle);
+    padding-bottom: 0;
+  }
+  .tab-btn {
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: inherit;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    transition: all var(--transition-fast);
+  }
+  .tab-btn:hover {
+    color: var(--text-primary);
+  }
+  .tab-btn.active {
+    color: var(--color-cyan);
+    border-bottom-color: var(--color-cyan);
+  }
+
+  .tab-content {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-top: none;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    padding: var(--space-3);
+  }
+
+  /* Comparison Section */
+  .compare-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    margin-bottom: var(--space-2);
+  }
+  .compare-title {
+    font-size: 17px;
+    font-weight: 800;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .compare-table-wrapper {
+    overflow-x: auto;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--bg-main);
+  }
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    text-align: left;
+  }
+  .compare-table th {
+    background: var(--bg-surface-elevated);
+    color: var(--text-secondary);
+    font-weight: 700;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border-subtle);
+    white-space: nowrap;
+  }
+  .compare-table td {
+    padding: 11px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    white-space: nowrap;
+  }
+  .compare-table tr:hover td {
+    background: rgba(255,255,255,0.02);
+  }
+  .compare-table tr.highlight td {
+    background: rgba(34, 211, 238, 0.05);
+  }
+
+  /* Chart & Summary Insights */
+  .insights-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+  }
+  @media(max-width: 800px) {
+    .insights-grid { grid-template-columns: 1fr; }
+  }
+
+  .insight-card {
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: var(--space-2);
+  }
+  .insight-card h3 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    color: var(--color-cyan);
+    font-weight: 700;
+  }
+  .insight-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-size: 13px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .insight-list li {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    color: var(--text-secondary);
+  }
+  .insight-list li strong {
+    color: var(--text-primary);
+  }
+
+  /* Bar Chart */
+  .chart-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .chart-row {
+    display: grid;
+    grid-template-columns: 140px 1fr 60px;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+  }
+  .chart-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-secondary);
+  }
+  .chart-bar-bg {
+    background: rgba(255,255,255,0.06);
+    height: 14px;
+    border-radius: 7px;
+    overflow: hidden;
+    position: relative;
+  }
+  .chart-bar-fill {
+    height: 100%;
+    border-radius: 7px;
+    background: linear-gradient(90deg, var(--color-cyan), var(--color-blue));
+    transition: width 0.4s ease;
+  }
+  .chart-val {
+    font-family: monospace;
+    font-weight: 700;
+    text-align: right;
+    color: var(--text-primary);
+  }
+
+  .compare-notes {
+    margin-top: var(--space-2);
+    padding: 10px 14px;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  /* Learning Mode Cards */
+  .learning-layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: var(--space-2);
+  }
+  @media(max-width: 760px) {
+    .learning-layout { grid-template-columns: 1fr; }
+  }
+  .learning-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .learn-algo-btn {
+    text-align: left;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+  }
+  .learn-algo-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--color-cyan);
+  }
+  .learn-algo-btn.active {
+    background: rgba(34, 211, 238, 0.12);
+    border-color: var(--color-cyan);
+    color: var(--color-cyan);
+    font-weight: 700;
+  }
+  .learn-card {
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: var(--space-2);
+  }
+  .learn-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    border-bottom: 1px solid var(--border-subtle);
+    padding-bottom: var(--space-1);
+    margin-bottom: var(--space-2);
+    flex-wrap: wrap;
+  }
+  .learn-card-title {
+    font-size: 18px;
+    font-weight: 800;
+    margin: 0;
+    color: #fff;
+  }
+
+  .learn-section {
+    margin-bottom: var(--space-2);
+  }
+  .learn-section h4 {
+    margin: 0 0 6px 0;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--color-cyan);
+  }
+  .learn-section p, .learn-section ol, .learn-section ul {
+    margin: 0;
+    font-size: 13.5px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+  .learn-section ol, .learn-section ul {
+    padding-left: 20px;
+    margin-top: 4px;
+  }
+  .learn-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2);
+    margin-top: var(--space-1);
+  }
+  @media(max-width: 600px) {
+    .learn-grid-2 { grid-template-columns: 1fr; }
+  }
+
+  .badge-metric {
+    display: inline-block;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 6px 10px;
+    font-family: monospace;
+    font-size: 12.5px;
+    color: #38bdf8;
+    margin-top: 4px;
+  }
+
+  /* Help & Modal System */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(3, 7, 18, 0.85);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    padding: var(--space-2);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+  .modal-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .modal-dialog {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-lg);
+    max-width: 760px;
+    width: 100%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.8);
+    transform: scale(0.96);
+    transition: transform 0.2s ease;
+  }
+  .modal-overlay.open .modal-dialog {
+    transform: scale(1);
+  }
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .modal-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #fff;
+  }
+  .modal-body {
+    padding: var(--space-3);
+    overflow-y: auto;
+    font-size: 13.5px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+  .modal-footer {
+    padding: var(--space-2) var(--space-3);
+    border-top: 1px solid var(--border-subtle);
+    display: flex;
+    justify-content: flex-end;
+  }
+  .faq-item {
+    margin-bottom: var(--space-2);
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+  }
+  .faq-q {
+    font-weight: 700;
+    color: var(--color-cyan);
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .faq-a {
+    margin: 0;
+    color: var(--text-secondary);
+  }
+
+  /* Tooltip styling */
+  [data-tooltip] {
+    position: relative;
+  }
+  [data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #0f1c2e;
+    color: #f1f5f9;
+    border: 1px solid #2d4566;
+    padding: 5px 9px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+    z-index: 100;
+    pointer-events: none;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+  }
+
+  /* Navigation Mode Switcher */
+  .nav-switcher {
+    display: inline-flex;
+    align-items: center;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-full);
+    padding: 3px;
+    gap: 4px;
+  }
+  .nav-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    user-select: none;
+  }
+  .nav-tab:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.04);
+  }
+  .nav-tab.active {
+    background: var(--bg-surface-elevated);
+    color: var(--color-cyan);
+    border-color: rgba(34, 211, 238, 0.4);
+    box-shadow: 0 0 14px rgba(34, 211, 238, 0.25);
+  }
+  .nav-badge {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 7px;
+    border-radius: var(--radius-full);
+    background: rgba(34, 211, 238, 0.15);
+    color: var(--color-cyan);
+  }
+
+  /* View Panels */
+  .view-panel {
+    display: block;
+    animation: fadeInView 0.2s ease;
+  }
+  @keyframes fadeInView {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Sudoku Visualizer Styles */
+  .sudoku-main-layout {
+    display: grid;
+    grid-template-columns: minmax(360px, 470px) 1fr;
+    gap: var(--space-3);
+    margin-top: var(--space-2);
+    align-items: start;
+  }
+  @media (max-width: 960px) {
+    .sudoku-main-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .sudoku-board-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: var(--space-2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: var(--shadow-md);
+  }
+  .sudoku-board-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-2);
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .sudoku-board-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .sudoku-board-hints {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    flex-wrap: wrap;
+  }
+  .legend-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+  .legend-dot.given { background: #ffffff; }
+  .legend-dot.trial { background: var(--color-cyan); box-shadow: 0 0 6px var(--color-cyan); }
+  .legend-dot.backtrack { background: var(--color-red); box-shadow: 0 0 6px var(--color-red); }
+  .legend-dot.solved { background: var(--color-green); box-shadow: 0 0 6px var(--color-green); }
+
+  .sudoku-table-wrapper {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    padding: var(--space-1) 0;
+  }
+  .sudoku-table {
+    border-collapse: collapse;
+    background: #09101d;
+    border: 3px solid #38bdf8;
+    border-radius: var(--radius-sm);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    user-select: none;
+  }
+  .sudoku-cell {
+    width: 44px;
+    height: 44px;
+    text-align: center;
+    vertical-align: middle;
+    font-size: 21px;
+    font-weight: 700;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    color: var(--text-primary);
+    background: #09101d;
+    border: 1px solid #1a2a40;
+    outline: none;
+    cursor: pointer;
+    transition: background-color 0.12s ease, color 0.12s ease;
+    padding: 0;
+  }
+  @media (max-width: 500px) {
+    .sudoku-cell {
+      width: 34px;
+      height: 34px;
+      font-size: 15px;
+    }
+  }
+
+  /* 3x3 Block boundaries */
+  .sudoku-cell.col-bound {
+    border-right: 3px solid #38bdf8;
+  }
+  .sudoku-cell.row-bound {
+    border-bottom: 3px solid #38bdf8;
+  }
+
+  /* Focus & Crosshair highlighting */
+  .sudoku-cell.highlight-crosshair {
+    background: rgba(34, 211, 238, 0.08);
+  }
+  .sudoku-cell.highlight-box {
+    background: rgba(34, 211, 238, 0.05);
+  }
+  .sudoku-cell.cell-focused {
+    background: rgba(34, 211, 238, 0.22) !important;
+    box-shadow: inset 0 0 0 2px var(--color-cyan);
+    caret-color: var(--color-cyan);
+  }
+
+  /* Cell states */
+  .sudoku-cell.cell-given {
+    color: #ffffff;
+    font-weight: 800;
+    background: rgba(255, 255, 255, 0.04);
+  }
+  .sudoku-cell.cell-trial {
+    color: var(--color-cyan);
+    background: rgba(34, 211, 238, 0.2);
+    font-weight: 700;
+    box-shadow: inset 0 0 8px rgba(34, 211, 238, 0.3);
+  }
+  .sudoku-cell.cell-backtrack {
+    color: #fca5a5;
+    background: rgba(244, 63, 94, 0.28);
+    box-shadow: inset 0 0 8px rgba(244, 63, 94, 0.4);
+  }
+  .sudoku-cell.cell-solved {
+    color: #34d399;
+    background: rgba(16, 185, 129, 0.14);
+    font-weight: 800;
+  }
+  .sudoku-cell.cell-conflict {
+    color: #ffffff;
+    background: rgba(244, 63, 94, 0.45);
+    border-color: var(--color-red) !important;
+  }
+
+  .sudoku-board-footer {
+    margin-top: var(--space-2);
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: center;
+    line-height: 1.5;
+  }
+  .sudoku-board-footer strong {
+    color: var(--color-cyan);
+  }
+
+  /* ==========================================================================
+     HOME / LANDING VIEW STYLES (8px Grid & Responsive)
+     ========================================================================== */
+  .hero-hub {
+    text-align: center;
+    padding: var(--space-4) 0 var(--space-5);
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  .hero-hub-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: 6px 14px;
+    border-radius: var(--radius-full);
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-subtle);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-cyan);
+    margin-bottom: var(--space-2);
+  }
+  .hero-hub-title {
+    font-size: clamp(28px, 4.5vw, 44px);
+    font-weight: 900;
+    letter-spacing: -1px;
+    line-height: 1.2;
+    margin-bottom: var(--space-2);
+  }
+  .hero-hub-title .gradient-text {
+    background: linear-gradient(135deg, var(--color-cyan) 0%, var(--color-indigo) 50%, var(--color-purple) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero-hub-lead {
+    font-size: clamp(15px, 2vw, 17px);
+    color: var(--text-secondary);
+    margin-bottom: var(--space-3);
+    line-height: 1.6;
+  }
+  .hero-hub-chips {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+  }
+  .hub-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  /* Two Core Cards Grid */
+  .hub-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: var(--space-4);
+    margin: var(--space-5) 0 var(--space-6);
+  }
+  .hub-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-md);
+    transition: transform var(--transition-normal), border-color var(--transition-normal), box-shadow var(--transition-normal);
+    position: relative;
+    overflow: hidden;
+  }
+  .hub-card:hover {
+    transform: translateY(-4px);
+  }
+  .hub-card.card-path {
+    border-top: 4px solid var(--color-cyan);
+  }
+  .hub-card.card-path:hover {
+    border-color: var(--color-cyan);
+    box-shadow: 0 12px 30px rgba(34, 211, 238, 0.2);
+  }
+  .hub-card.card-sudoku {
+    border-top: 4px solid var(--color-purple);
+  }
+  .hub-card.card-sudoku:hover {
+    border-color: var(--color-purple);
+    box-shadow: 0 12px 30px rgba(168, 85, 247, 0.2);
+  }
+  .hub-card-header {
+    margin-bottom: var(--space-2);
+  }
+  .hub-card-badge-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-2);
+  }
+  .hub-card-badge {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 3px 8px;
+    border-radius: var(--radius-full);
+  }
+  .hub-card-badge.badge-path {
+    background: rgba(34, 211, 238, 0.15);
+    color: var(--color-cyan);
+    border: 1px solid rgba(34, 211, 238, 0.3);
+  }
+  .hub-card-badge.badge-sudoku {
+    background: rgba(168, 85, 247, 0.15);
+    color: #c084fc;
+    border: 1px solid rgba(168, 85, 247, 0.3);
+  }
+  .hub-card-title {
+    font-size: 22px;
+    font-weight: 800;
+    margin-bottom: var(--space-1);
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+  .hub-card-desc {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: var(--space-3);
+  }
+  .hub-features-list {
+    list-style: none;
+    margin-bottom: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+  .hub-features-list li {
+    font-size: 13px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .hub-features-list li .bullet {
+    color: var(--color-green);
+    font-weight: bold;
+  }
+  .hub-card-actions {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+  .btn-launch-hub {
+    width: 100%;
+    padding: 12px 18px;
+    font-size: 15px;
+    font-weight: 700;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all var(--transition-fast);
+  }
+  .btn-launch-hub.path {
+    background: linear-gradient(135deg, var(--color-cyan), var(--color-blue));
+    color: #04121f;
+  }
+  .btn-launch-hub.path:hover {
+    filter: brightness(1.12);
+    transform: translateY(-1px);
+  }
+  .btn-launch-hub.sudoku {
+    background: linear-gradient(135deg, var(--color-purple), var(--color-indigo));
+    color: #ffffff;
+  }
+  .btn-launch-hub.sudoku:hover {
+    filter: brightness(1.12);
+    transform: translateY(-1px);
+  }
+
+  /* Algorithm Overview Cards on Hub */
+  .hub-concept-section {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    margin-bottom: var(--space-6);
+  }
+  .hub-concept-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: var(--space-3);
+    margin-top: var(--space-3);
+  }
+  .hub-concept-box {
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+  }
+  .hub-concept-box h4 {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .hub-concept-box p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+</style>
+<link rel="stylesheet" href="enhance.css">
+</head>
+<body>
+
+<div class="app-container">
+
+  <!-- Header -->
+    <!-- Header -->
+  <header class="app-header">
+    <div class="brand" id="brandHomeLink" style="cursor: pointer;" title="Return to Algorithm Visualizer Hub">
+      <div class="brand-logo" aria-hidden="true">AV</div>
+      <div>
+        <h1 class="brand-title">Algorithm <span>Visualizer</span></h1>
+        <p class="brand-subtitle">Interactive Laboratory Suite for Pathfinding & Constraint Satisfaction</p>
+      </div>
+    </div>
+
+    <!-- Mode Switcher Tabs -->
+    <nav class="nav-switcher" role="tablist" aria-label="Laboratory Modes">
+      <button class="nav-tab active" id="btnNavHome" role="tab" aria-selected="true" aria-controls="viewHome" data-tooltip="Algorithm Visualizer Home Hub">
+        <span class="nav-icon">🏠</span>
+        <span>Home Hub</span>
+      </button>
+      <button class="nav-tab" id="btnNavPathlab" role="tab" aria-selected="false" aria-controls="viewPathfinding" data-tooltip="Switch to Pathfinding Visualizer">
+        <span class="nav-icon">🗺️</span>
+        <span>Path Finder</span>
+      </button>
+      <button class="nav-tab" id="btnNavSudoku" role="tab" aria-selected="false" aria-controls="viewSudoku" data-tooltip="Switch to Sudoku Backtracking Solver">
+        <span class="nav-icon">🧩</span>
+        <span>Sudoku Solver</span>
+        <span class="nav-badge">Backtracking</span>
+      </button>
+      <button class="nav-tab" id="btnNavProjects" role="tab" aria-selected="false" aria-controls="viewProjects" data-tooltip="Manage saved projects">
+        <span class="nav-icon">📂</span>
+        <span>My Projects</span>
+        <span class="nav-badge" id="projCountBadge">0</span>
+      </button>
+    </nav>
+
+    <div class="header-actions">
+      <!-- Theme Switcher -->
+      <button class="btn btn-sm" id="btnThemeToggle" type="button" data-tooltip="Toggle light/dark theme">
+        <span id="themeToggleIcon">🌙</span> <span id="themeToggleLabel">Theme</span>
+      </button>
+      <!-- Quick Mode Switch Button -->
+      <button class="btn btn-primary btn-sm" id="btnQuickSwitch" data-tooltip="Quickly toggle visualizer modes">
+        <span id="quickSwitchIcon">🗺️</span> <span id="quickSwitchText">Launch Path Finder</span>
+      </button>
+      <button class="btn btn-sm" id="btnToggleGuide" data-tooltip="Show or hide beginner instructions">
+        <span>📖</span> <span id="guideBtnText">Hide Guide</span>
+      </button>
+      <button class="btn btn-sm" id="btnOpenHelp" data-tooltip="Beginner definitions and search concepts">
+        <span>❓</span> Help & Concepts
+      </button>
+    </div>
+  </header>
+
+  <!-- View 1: Pathfinding Laboratory -->
+  
+  <!-- View 0: Algorithm Visualizer Home Hub -->
+  <main id="viewHome" class="view-panel active" aria-label="Algorithm Visualizer Home Hub">
+    
+    <!-- Hero Section -->
+    <section class="hero-hub" aria-labelledby="hub-hero-title">
+      <div class="hero-hub-pill">
+        <span>⚡</span> Unified Algorithmic Interactive Suite
+      </div>
+      <h2 id="hub-hero-title" class="hero-hub-title">
+        Explore Computer Science Algorithms Through <br /><span class="gradient-text">Live Interactive Visualization</span>
+      </h2>
+      <p class="hero-hub-lead">
+        A unified platform merging graph theory search heuristics and recursive constraint satisfaction backtracking. Step through executions, adjust playback speeds, generate random obstacles and boards, and observe real-time performance telemetry.
+      </p>
+      <div class="hero-hub-chips">
+        <span class="hub-chip">🗺️ 8 Graph Pathfinding Algorithms</span>
+        <span class="hub-chip">🧩 Recursive Backtracking Solver</span>
+        <span class="hub-chip">🌀 5 Procedural Maze Generators</span>
+        <span class="hub-chip">📊 Live Side-by-Side Benchmarks</span>
+        <span class="hub-chip">⚡ Zero External Dependencies</span>
+      </div>
+    </section>
+
+    <!-- Visualizer Choice Cards -->
+    <section aria-label="Visualizer Applications">
+      <div class="hub-cards-grid">
+        
+        <!-- CARD 1: Path Finder -->
+        <article class="hub-card card-path">
+          <header class="hub-card-header">
+            <div class="hub-card-badge-row">
+              <span class="hub-card-badge badge-path">Graph Theory & Traversal</span>
+              <span style="font-size: 12px; color: var(--text-muted); font-weight: 600;">8 Search Algorithms</span>
+            </div>
+            <h3 class="hub-card-title"><span>🗺️</span> Path Finder</h3>
+            <p class="hub-card-desc">
+              Interactive grid-based pathfinding laboratory. Visualize shortest path discovery, draw walls and weights, test procedural maze generators, and compare algorithms head-to-head.
+            </p>
+          </header>
+
+          <ul class="hub-features-list">
+            <li><span class="bullet">✓</span> <strong>8 Algorithms:</strong> A*, Dijkstra, BFS, DFS, Greedy Best-First, Bidirectional BFS, Jump Point Search, Swarm</li>
+            <li><span class="bullet">✓</span> <strong>Maze Generators:</strong> Recursive Division, Eller's, Prim's, Spiral, and Random Mazes</li>
+            <li><span class="bullet">✓</span> <strong>Interactive Controls:</strong> Weighted nodes, wall drawing, draggable endpoints, playback speeds</li>
+            <li><span class="bullet">✓</span> <strong>Side-by-Side Benchmark:</strong> Compare all algorithms on identical layouts with runtime and path metrics</li>
+          </ul>
+
+          <div class="hub-card-actions">
+            <button class="btn-launch-hub path" id="btnLaunchPathFromHub" type="button">
+              <span>Launch Path Finder</span> <span>→</span>
+            </button>
+          </div>
+        </article>
+
+        <!-- CARD 2: Sudoku Solver -->
+        <article class="hub-card card-sudoku">
+          <header class="hub-card-header">
+            <div class="hub-card-badge-row">
+              <span class="hub-card-badge badge-sudoku">Constraint Satisfaction</span>
+              <span style="font-size: 12px; color: var(--text-muted); font-weight: 600;">Backtracking DFS</span>
+            </div>
+            <h3 class="hub-card-title"><span>🧩</span> Sudoku Solver</h3>
+            <p class="hub-card-desc">
+              Interactive visualizer of recursive backtracking on 9×9 grids. Watch Depth-First Search test candidate digits, prune invalid branches, and retreat from dead-ends with real-time telemetry.
+            </p>
+          </header>
+
+          <ul class="hub-features-list">
+            <li><span class="bullet">✓</span> <strong>Recursive Backtracking:</strong> Depth-First state search with instant Row, Col, and 3×3 Box constraint checks</li>
+            <li><span class="bullet">✓</span> <strong>Animation Speed:</strong> 4 variable speeds (Slow, Average, Fast, Fastest) to analyze every decision</li>
+            <li><span class="bullet">✓</span> <strong>Interactive 9×9 Board:</strong> Click cells and enter custom puzzles directly with keyboard validation</li>
+            <li><span class="bullet">✓</span> <strong>Puzzle Generator:</strong> Generate random solvable puzzles across 4 difficulty tiers</li>
+          </ul>
+
+          <div class="hub-card-actions">
+            <button class="btn-launch-hub sudoku" id="btnLaunchSudokuFromHub" type="button">
+              <span>Launch Sudoku Solver</span> <span>→</span>
+            </button>
+          </div>
+        </article>
+
+      </div>
+    </section>
+
+    <!-- Algorithm Concept Overview -->
+    <section class="hub-concept-section" aria-labelledby="concept-heading">
+      <h3 id="concept-heading" style="font-size: 18px; font-weight: 800; margin-bottom: 4px;">
+        📚 Core Algorithm Concepts Explained
+      </h3>
+      <p style="font-size: 13.5px; color: var(--text-secondary);">
+        Understand the theoretical foundation behind the visualizers:
+      </p>
+
+      <div class="hub-concept-grid">
+        <div class="hub-concept-box">
+          <h4><span>🎯</span> A* Search (Heuristic)</h4>
+          <p>Combines Dijkstra's cost-so-far <code>g(n)</code> with estimated heuristic distance <code>h(n)</code>. Yields fast shortest paths directed towards the target.</p>
+        </div>
+        <div class="hub-concept-box">
+          <h4><span>⚡</span> Dijkstra's Algorithm</h4>
+          <p>The gold standard for weighted graphs. Explores outward in waves of increasing path cost, ensuring mathematically optimal shortest routes.</p>
+        </div>
+        <div class="hub-concept-box">
+          <h4><span>🌊</span> Breadth-First Search</h4>
+          <p>Explores radially layer-by-layer using a FIFO queue. Guarantees the shortest number of steps on unweighted graphs.</p>
+        </div>
+        <div class="hub-concept-box">
+          <h4><span>🧩</span> Backtracking (CSP)</h4>
+          <p>Systematic recursive trial-and-error. Explores one candidate digit at a time and rolls back immediately upon detecting constraint violations.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <main id="viewPathfinding" class="view-panel" style="display: none;" aria-label="Pathfinding Laboratory View">
+  <!-- Beginner-Friendly Quick Start Guide -->
+  <aside class="guide-card" id="quickStartGuide" aria-label="Quick Start Guide">
+    <div class="guide-header">
+      <div class="guide-title">
+        <span>🚀</span> Quick Start Guide (5 Simple Steps)
+      </div>
+      <button class="btn btn-sm" id="btnCloseGuide" style="border:none;background:transparent;color:var(--text-muted);cursor:pointer;" title="Dismiss Guide">✕</button>
+    </div>
+    <div class="guide-steps">
+      <div class="guide-step">
+        <div class="step-num">1</div>
+        <div><strong>Choose Algorithm:</strong> Select an algorithm like <em>A*</em> or <em>BFS</em> from the dropdown.</div>
+      </div>
+      <div class="guide-step">
+        <div class="step-num">2</div>
+        <div><strong>Draw Obstacles:</strong> Click and drag on the grid to create walls, or generate a maze.</div>
+      </div>
+      <div class="guide-step">
+        <div class="step-num">3</div>
+        <div><strong>Move Endpoints:</strong> Drag the <span style="color:var(--color-green);font-weight:700">Start (S)</span> and <span style="color:var(--color-red);font-weight:700">Target (T)</span> to any position.</div>
+      </div>
+      <div class="guide-step">
+        <div class="step-num">4</div>
+        <div><strong>Run Visualize:</strong> Watch the search explore cells live with Pause/Resume controls.</div>
+      </div>
+      <div class="guide-step">
+        <div class="step-num">5</div>
+        <div><strong>Compare:</strong> Hit <em>Compare All</em> to see side-by-side performance benchmarks.</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Control Dashboard -->
+  <section class="control-dashboard" aria-label="Visualizer Controls">
+    
+    <!-- Primary Row: Algorithm Selection + Visualization Actions -->
+    <div class="toolbar-row">
+      <!-- Algorithm selection grouped into clear categories -->
+      <div class="toolbar-group">
+        <span class="group-label">Algorithm:</span>
+        <div class="select-wrapper">
+          <select id="algo" class="custom-select" data-tooltip="Select a search algorithm to test">
+            <optgroup label="Informed Search (Uses Distance / Cost)">
+              <option value="astar" selected>A* Search (A-Star)</option>
+              <option value="dijkstra">Dijkstra’s Algorithm</option>
+              <option value="greedy">Greedy Best-First Search</option>
+            </optgroup>
+            <optgroup label="Uninformed Search (No Heuristic)">
+              <option value="bfs">Breadth-First Search (BFS)</option>
+              <option value="dfs">Depth-First Search (DFS)</option>
+              <option value="bibfs">Bidirectional BFS</option>
+            </optgroup>
+            <optgroup label="Advanced & Specialized">
+              <option value="bellmanford">Bellman-Ford Algorithm</option>
+              <option value="jps">Jump Point Search (Ray Mode)</option>
+            </optgroup>
+          </select>
+          <span class="select-arrow">▼</span>
+        </div>
+      </div>
+
+      <!-- Playback Controls -->
+      <div class="toolbar-group">
+        <button class="btn btn-primary" id="run" data-tooltip="Run search animation on current grid">
+          <span>▶</span> Visualize
+        </button>
+        <button class="btn btn-warning" id="pause" disabled data-tooltip="Pause or resume current animation">
+          <span>⏸</span> Pause
+        </button>
+        <button class="btn btn-danger" id="stop" disabled data-tooltip="Stop visualization immediately">
+          <span>⏹</span> Stop
+        </button>
+      </div>
+
+      <!-- Speed Control with Clear Labels -->
+      <div class="toolbar-group">
+        <div class="speed-control" data-tooltip="Adjust animation exploration speed">
+          <span class="speed-label">Speed:</span>
+          <input type="range" id="speed" class="speed-slider" min="1" max="50" value="32" />
+          <span class="speed-indicator" id="speedLabel">Normal</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Secondary Row: Grid Tools & Comparison -->
+    <div class="toolbar-row" style="border-top: 1px solid var(--border-subtle); padding-top: var(--space-1);">
+      <div class="toolbar-group">
+        <span class="group-label">Grid Actions:</span>
+        <button class="btn" id="maze" data-tooltip="Generate a recursive division maze">
+          <span>🧱</span> Generate Maze
+        </button>
+        <button class="btn" id="clearWalls" data-tooltip="Remove all walls while keeping path">
+          <span>🧹</span> Clear Walls
+        </button>
+        <button class="btn" id="clearPath" data-tooltip="Clear visited and path cells">
+          <span>✨</span> Clear Path
+        </button>
+        <button class="btn" id="resetGrid" data-tooltip="Reset entire board and marker positions">
+          <span>🔄</span> Reset Grid
+        </button>
+        <button class="btn" id="btnSavePathProject" data-tooltip="Save current grid configuration to My Projects">
+          <span>💾</span> Save Grid
+        </button>
+      </div>
+
+      <div class="toolbar-group">
+        <button class="btn" id="compare" data-tooltip="Benchmark all 8 algorithms on this board">
+          <span>📊</span> Compare Algorithms
+        </button>
+      </div>
+    </div>
+
+    <!-- Live Algorithm Explanation Card -->
+    <div class="algo-summary-card" id="algoSummaryCard">
+      <div class="algo-summary-left">
+        <div class="algo-name-tag" id="summaryAlgoName">A* Search</div>
+        <div class="algo-desc-inline" id="summaryAlgoDesc">Uses accumulated cost plus Manhattan heuristic to aim directly at the target.</div>
+      </div>
+      <div class="algo-badges">
+        <span class="badge badge-success" id="summaryGuaranteeBadge">✓ Guarantees Shortest Path</span>
+        <span class="badge badge-info" id="summaryTypeBadge">Informed Search</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Grid Legend -->
+  <section class="grid-legend" aria-label="Grid Legend">
+    <div class="legend-items">
+      <div class="legend-item" data-tooltip="Starting location (drag to reposition)">
+        <span class="swatch start">S</span> <span>Start Node</span>
+      </div>
+      <div class="legend-item" data-tooltip="Target destination (drag to reposition)">
+        <span class="swatch end">T</span> <span>Target Node</span>
+      </div>
+      <div class="legend-item" data-tooltip="Impassable obstacle cell">
+        <span class="swatch wall"></span> <span>Wall</span>
+      </div>
+      <div class="legend-item" data-tooltip="Cells explored by the search algorithm">
+        <span class="swatch vis"></span> <span>Visited Cells</span>
+      </div>
+      <div class="legend-item" data-tooltip="Final shortest or connected path">
+        <span class="swatch path"></span> <span>Final Path</span>
+      </div>
+    </div>
+    <div class="legend-tip">
+      💡 Tip: Click & drag on empty cells to draw walls. Click on walls to erase.
+    </div>
+  </section>
+
+  <!-- Main Focus: The Interactive Grid -->
+  <main class="board-wrapper">
+    <div class="board" id="board" role="grid" aria-label="Interactive Pathfinding Grid"></div>
+  </main>
+
+  <!-- Live Status & Feedback Alert -->
+  <div class="status-banner" id="statusBanner" role="status">
+    <div id="statusText"><strong>Ready:</strong> Select an algorithm and click <strong>Visualize</strong> to begin.</div>
+    <div id="statusDetails" style="font-size:12px;color:var(--text-muted)">Grid size: 45 × 22</div>
+  </div>
+
+  <!-- Key Statistics Dashboard -->
+  <section class="stats-grid" aria-label="Live Search Statistics">
+    <div class="stat-card">
+      <div class="stat-title">Algorithm <span data-tooltip="Currently selected search method">ℹ</span></div>
+      <div class="stat-val" id="s_algo" style="color:var(--color-cyan);font-size:16px;">A*</div>
+      <div class="stat-sub">Active searcher</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-title">Cells Explored <span data-tooltip="Total grid squares inspected">ℹ</span></div>
+      <div class="stat-val" id="s_vis" style="color:#38bdf8;">0</div>
+      <div class="stat-sub">Evaluated nodes</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-title">Path Length <span data-tooltip="Total steps from Start to Target">ℹ</span></div>
+      <div class="stat-val" id="s_path" style="color:var(--color-amber);">0</div>
+      <div class="stat-sub">Step count</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-title">Compute Time <span data-tooltip="Time spent calculating path">ℹ</span></div>
+      <div class="stat-val" id="s_time">—</div>
+      <div class="stat-sub">Execution duration</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-title">Search Status <span data-tooltip="Current status of the algorithm">ℹ</span></div>
+      <div class="stat-val" id="s_res" style="font-size:15px;color:var(--color-green);">Ready</div>
+      <div class="stat-sub" id="s_res_sub">Standing by</div>
+    </div>
+  </section>
+
+  <!-- Educational Tabs: Comparison Benchmarks & Learning Mode -->
+  <section class="tabs-container" aria-label="Educational Panels">
+    <nav class="tabs-nav" role="tablist">
+      <button class="tab-btn active" id="tabBtnCompare" role="tab" aria-selected="true" aria-controls="tabCompare">
+        📊 Compare Algorithms
+      </button>
+      <button class="tab-btn" id="tabBtnLearn" role="tab" aria-selected="false" aria-controls="tabLearn">
+        📖 Learning Mode & Student Guide
+      </button>
+    </nav>
+
+    <!-- Tab 1: Compare Algorithms -->
+    <div class="tab-content" id="tabCompare" role="tabpanel">
+      <div class="compare-header">
+        <div>
+          <h2 class="compare-title">Compare Algorithms – Which One Performs Better?</h2>
+          <p style="margin:4px 0 0 0;font-size:13px;color:var(--text-secondary);">
+            Runs all 8 algorithms on your exact current board setup to benchmark exploration efficiency and path length.
+          </p>
+        </div>
+        <button class="btn btn-primary btn-sm" id="btnRunCompare">
+          <span>⚡</span> Run Full Comparison
+        </button>
+      </div>
+
+      <div class="compare-table-wrapper" id="compareContainer">
+        <div style="padding:24px;text-align:center;color:var(--text-muted);">
+          Click <strong>Run Full Comparison</strong> above to evaluate all algorithms on the current grid.
+        </div>
+      </div>
+
+      <!-- Comparison Insights & Dynamic Visual Bar Chart -->
+      <div class="insights-grid" id="compareInsights" style="display:none;">
+        <div class="insight-card">
+          <h3>🏆 Key Performance Highlights</h3>
+          <ul class="insight-list">
+            <li><span>Fewest Cells Explored:</span> <strong id="bestExploredAlgo">—</strong></li>
+            <li><span>Shortest Path Length:</span> <strong id="bestPathAlgo">—</strong></li>
+            <li><span>Fastest Compute Time:</span> <strong id="bestTimeAlgo">—</strong></li>
+            <li><span>Guarantees Shortest:</span> <strong>BFS, Dijkstra, A*, Bi-BFS, Bellman-Ford, JPS</strong></li>
+          </ul>
+        </div>
+        <div class="insight-card">
+          <h3>📊 Explored Cells Relative Comparison</h3>
+          <div class="chart-bars" id="chartBars"></div>
+        </div>
+      </div>
+
+      <div class="compare-notes">
+        <strong>Important Note on Benchmarks:</strong> All algorithms execute in your local browser sandbox. Execution times may vary slightly based on CPU load. JPS and Bellman-Ford use specialized expansion techniques (ray scanning and repeated edge relaxations respectively), which are labeled to differentiate them from standard node queues.
+      </div>
+    </div>
+
+    <!-- Tab 2: Learning Mode -->
+    <div class="tab-content" id="tabLearn" role="tabpanel" style="display:none;">
+      <div class="learning-layout">
+        <!-- Algorithm selector column -->
+        <div class="learning-menu" id="learningMenu">
+          <button class="learn-algo-btn active" data-algo="astar">A* Search</button>
+          <button class="learn-algo-btn" data-algo="dijkstra">Dijkstra’s Algorithm</button>
+          <button class="learn-algo-btn" data-algo="bfs">Breadth-First (BFS)</button>
+          <button class="learn-algo-btn" data-algo="dfs">Depth-First (DFS)</button>
+          <button class="learn-algo-btn" data-algo="bibfs">Bidirectional BFS</button>
+          <button class="learn-algo-btn" data-algo="greedy">Greedy Best-First</button>
+          <button class="learn-algo-btn" data-algo="bellmanford">Bellman-Ford</button>
+          <button class="learn-algo-btn" data-algo="jps">Jump Point Search</button>
+        </div>
+
+        <!-- Detail card -->
+        <article class="learn-card" id="learnDetailCard">
+          <!-- Filled dynamically via JS -->
+        </article>
+      </div>
+    </div>
+  </section>
+  </main>
+
+  <!-- View 2: Sudoku Solver (Backtracking) -->
+  <main id="viewSudoku" class="view-panel" style="display: none;" aria-label="Sudoku Backtracking Solver View">
+    <!-- Sudoku Overview / Guide -->
+    <aside class="guide-card" id="sudokuGuideCard" aria-label="Sudoku Backtracking Overview">
+      <div class="guide-header">
+        <div class="guide-title">
+          <span>🧩</span> Backtracking Algorithm — Depth-First Search with Constraint Satisfaction
+        </div>
+        <button class="btn btn-sm" id="btnCloseSudokuGuide" style="border:none;background:transparent;color:var(--text-muted);cursor:pointer;" title="Dismiss Guide">✕</button>
+      </div>
+      <div class="guide-steps">
+        <div class="guide-step">
+          <div class="step-num">1</div>
+          <div><strong>Choose or Edit:</strong> Select a preset puzzle, click <em>Generate Puzzle</em>, or click empty cells to enter your own digits (1–9).</div>
+        </div>
+        <div class="guide-step">
+          <div class="step-num">2</div>
+          <div><strong>Watch Recursion:</strong> Click <em>Solve (Backtracking)</em> to watch Depth-First Backtracking search through candidate digits.</div>
+        </div>
+        <div class="guide-step">
+          <div class="step-num">3</div>
+          <div><strong>Observe Pruning:</strong> If a digit violates row, column, or 3×3 box rules, it is immediately discarded (pruned).</div>
+        </div>
+        <div class="guide-step">
+          <div class="step-num">4</div>
+          <div><strong>Track Backtracks:</strong> When a dead-end is reached, the solver retreats to the previous cell and tries the next number.</div>
+        </div>
+        <div class="guide-step">
+          <div class="step-num">5</div>
+          <div><strong>Step & Inspect:</strong> Use <em>Pause</em> and <em>Step</em> to advance one decision at a time and study the recursion tree!</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Sudoku Control Dashboard -->
+    <section class="control-dashboard" aria-label="Sudoku Controls">
+      <div class="toolbar-row">
+        <!-- Playback Actions -->
+        <div class="toolbar-group">
+          <button class="btn btn-primary" id="btnSudokuSolve" data-tooltip="Start backtracking search animation">
+            <span>▶</span> Solve (Backtracking)
+          </button>
+          <button class="btn btn-warning" id="btnSudokuPause" disabled data-tooltip="Pause or resume search recursion">
+            <span id="sudokuPauseIcon">⏸</span> <span id="sudokuPauseText">Pause</span>
+          </button>
+          <button class="btn" id="btnSudokuStep" disabled data-tooltip="Advance solver by one recursive decision">
+            <span>⏭</span> Step
+          </button>
+          <button class="btn btn-danger" id="btnSudokuStop" disabled data-tooltip="Cancel solving immediately">
+            <span>⏹</span> Stop
+          </button>
+        </div>
+
+        <!-- Speed Slider -->
+        <div class="toolbar-group">
+          <div class="speed-control" data-tooltip="Adjust backtracking animation speed">
+            <span class="speed-label">Speed:</span>
+            <input type="range" id="sldSudokuSpeed" class="speed-slider" min="0" max="3" value="2" />
+            <span class="speed-indicator" id="lblSudokuSpeed">Fast (8ms)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Secondary Row: Presets, Difficulty, Clear -->
+      <div class="toolbar-row" style="border-top: 1px solid var(--border-subtle); padding-top: var(--space-1);">
+        <div class="toolbar-group">
+          <span class="group-label">Preset Puzzles:</span>
+          <div class="select-wrapper">
+            <select id="selSudokuPreset" class="custom-select" data-tooltip="Choose a preconfigured puzzle">
+              <option value="easy">Easy Warmup (36 Clues)</option>
+              <option value="medium" selected>Medium Challenge (30 Clues)</option>
+              <option value="hard">Hard Grid (25 Clues)</option>
+              <option value="escargot">AI Escargot / Arto Inkala (World's Hardest)</option>
+              <option value="blank">Blank Grid (Manual Input)</option>
+            </select>
+            <span class="select-arrow">▼</span>
+          </div>
+        </div>
+
+        <div class="toolbar-group">
+          <span class="group-label">Difficulty:</span>
+          <div class="select-wrapper">
+            <select id="selSudokuDifficulty" class="custom-select" data-tooltip="Difficulty for generator">
+              <option value="easy">Easy (46 Clues)</option>
+              <option value="medium" selected>Medium (34 Clues)</option>
+              <option value="hard">Hard (28 Clues)</option>
+              <option value="expert">Expert (24 Clues)</option>
+            </select>
+            <span class="select-arrow">▼</span>
+          </div>
+          <button class="btn" id="btnSudokuGenerate" data-tooltip="Generate a fresh random solvable Sudoku puzzle">
+            <span>🎲</span> Generate Puzzle
+          </button>
+        </div>
+
+        <div class="toolbar-group">
+          <button class="btn" id="btnSudokuReset" data-tooltip="Reset solver progress and restore initial clues">
+            <span>🔄</span> Reset to Clues
+          </button>
+          <button class="btn" id="btnSudokuClear" data-tooltip="Clear all cells on the board">
+            <span>🧹</span> Clear All
+          </button>
+          <button class="btn" id="btnSaveSudokuProject" data-tooltip="Save current Sudoku puzzle to My Projects">
+            <span>💾</span> Save Puzzle
+          </button>
+        </div>
+      </div>
+
+      <!-- Summary Info Card -->
+      <div class="algo-summary-card">
+        <div class="algo-summary-left">
+          <div class="algo-name-tag">Recursive Backtracking (CSP)</div>
+          <div class="algo-desc-inline">Depth-First Search through state space with instant constraint validation (Row, Column, 3×3 Box).</div>
+        </div>
+        <div class="algo-badges">
+          <span class="badge badge-success">✓ Guaranteed Exact Solution</span>
+          <span class="badge badge-info">Search Tree Pruning</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Sudoku Interactive Layout: Board + Real-time Telemetry & Theory -->
+    <div class="sudoku-main-layout">
+      <!-- Left: Interactive 9x9 Board -->
+      <div class="sudoku-board-card">
+        <div class="sudoku-board-header">
+          <div class="sudoku-board-title">
+            <span>📋</span> Interactive 9×9 Grid
+          </div>
+          <div class="sudoku-board-hints">
+            <span><span class="legend-dot given"></span>Given</span>
+            <span><span class="legend-dot trial"></span>Testing</span>
+            <span><span class="legend-dot backtrack"></span>Backtrack</span>
+            <span><span class="legend-dot solved"></span>Confirmed</span>
+          </div>
+        </div>
+
+        <div class="sudoku-table-wrapper">
+          <table id="sudokuTable" class="sudoku-table" role="grid" aria-label="Sudoku Grid">
+            <!-- 9x9 Cells generated dynamically -->
+          </table>
+        </div>
+
+        <div class="sudoku-board-footer">
+          💡 Click any cell and type <strong>1–9</strong> or press <strong>Backspace</strong> to edit. Navigate with <strong>Arrow keys</strong>.
+        </div>
+      </div>
+
+      <!-- Right: Real-time Telemetry & Insights -->
+      <div class="sudoku-side-panel">
+        <!-- Live Status Card -->
+        <div class="status-banner" style="margin-bottom: var(--space-2);">
+          <div id="sudokuStatusText"><strong>Ready:</strong> Select a puzzle or click <strong>Solve</strong> to begin backtracking.</div>
+          <div id="sudokuStatusDetails" style="font-size:12px;color:var(--text-muted)">Validation: 100% Rule-Compliant</div>
+        </div>
+
+        <!-- Live Statistics Grid -->
+        <div class="stats-grid" style="margin-top: 0; grid-template-columns: repeat(2, 1fr);">
+          <div class="stat-card">
+            <div class="stat-title">Recursive Decisions <span data-tooltip="Total candidate digit placements tested">ℹ</span></div>
+            <div class="stat-val" id="statSudokuSteps" style="color:var(--color-cyan);">0</div>
+            <div class="stat-sub">Recursive function calls</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-title">Dead Ends / Backtracks <span data-tooltip="Number of times the algorithm hit a contradiction and stepped back">ℹ</span></div>
+            <div class="stat-val" id="statSudokuBacktracks" style="color:var(--color-red);">0</div>
+            <div class="stat-sub">Tree rollbacks</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-title">Board Progress <span data-tooltip="Current filled cells out of 81">ℹ</span></div>
+            <div class="stat-val" id="statSudokuFilled" style="color:var(--color-green);">30 / 81</div>
+            <div class="stat-sub" id="statSudokuPercent">37% Filled</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-title">Execution Time <span data-tooltip="Time spent calculating solution">ℹ</span></div>
+            <div class="stat-val" id="statSudokuTime" style="color:var(--color-amber);">0 ms</div>
+            <div class="stat-sub">Solver runtime</div>
+          </div>
+        </div>
+
+        <!-- Backtracking Concept & Logic Card -->
+        <div class="learn-card" style="margin-top: var(--space-2);">
+          <div class="learn-card-header">
+            <h3 class="learn-card-title"><span>🧠</span> How Backtracking Solves Sudoku</h3>
+            <span class="badge badge-info">Algorithm Deep Dive</span>
+          </div>
+          <div class="learn-section">
+            <h4>1. Depth-First Decision Tree</h4>
+            <p>The solver treats the puzzle as a tree of decisions. At each empty cell, it branches into up to 9 possible paths (one for each digit 1 through 9).</p>
+          </div>
+          <div class="learn-section">
+            <h4>2. Constraint Satisfaction & Pruning</h4>
+            <p>Before placing a number, it checks three constraints: no duplicates in the <strong>Row</strong>, in the <strong>Column</strong>, or in the <strong>3×3 Subgrid</strong>. Illegal digits are pruned immediately without exploring downstream dead ends.</p>
+          </div>
+          <div class="learn-section">
+            <h4>3. The Backtracking Step</h4>
+            <p>If all digits 1–9 lead to conflicts at a later stage, the function resets the current cell to blank (0) and <strong>returns false</strong> to the parent call, forcing it to try the next alternate candidate.</p>
+          </div>
+          <div class="learn-section">
+            <h4>Complexity Breakdown</h4>
+            <div class="learn-grid-2">
+              <div>
+                <strong>Worst-Case Time:</strong>
+                <div class="badge-metric">O(9<sup>m</sup>)</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">m = number of empty cells</div>
+              </div>
+              <div>
+                <strong>Space Complexity:</strong>
+                <div class="badge-metric">O(m) Stack</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Max 81 recursive call frames</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ===================== My Projects View ===================== -->
+  <main id="viewProjects" class="view-panel" style="display:none;" aria-label="My Saved Projects">
+    <div class="proj-view-header">
+      <div>
+        <h2 class="proj-view-title">📂 My Projects <span class="proj-count-badge" id="projCountDisplay">0</span></h2>
+        <p style="font-size:14px;color:var(--text-secondary);margin-top:4px;">Save, load, and manage your Path Finder grids and Sudoku puzzles.</p>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-primary" id="btnImportJSON"><span>⬆</span> Import JSON</button>
+      </div>
+    </div>
+    <div class="proj-toolbar">
+      <input type="text" class="proj-search-input" id="projSearch" placeholder="🔍 Search projects by name…" aria-label="Search projects" />
+      <select class="proj-filter-select" id="projFilter" aria-label="Filter by type">
+        <option value="all">All Types</option>
+        <option value="pathfinder">Path Finder Only</option>
+        <option value="sudoku">Sudoku Only</option>
+      </select>
+    </div>
+    <div id="projectsListContainer" role="list" aria-label="Saved projects list"></div>
+  </main>
+
+  <!-- Help & Concepts Modal -->
+  <div class="modal-overlay" id="helpModal" role="dialog" aria-modal="true" aria-labelledby="helpModalTitle">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h2 class="modal-title" id="helpModalTitle"><span>💡</span> Pathfinding Lab Glossary & Concepts</h2>
+        <button class="btn btn-sm" id="btnCloseHelp" style="border:none;background:transparent;color:var(--text-muted);font-size:16px;cursor:pointer;">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="faq-item">
+          <div class="faq-q">What is Pathfinding?</div>
+          <div class="faq-a">Pathfinding is the algorithmic process of discovering a valid, walkable route from a starting point to a destination without passing through obstacles or barriers.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">What is a Node?</div>
+          <div class="faq-a">A node is a single position or square on the grid. In graph theory, nodes (vertices) are connected by edges representing valid moves (Up, Down, Left, Right).</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">What is a Wall?</div>
+          <div class="faq-a">A wall is an impassable obstacle. Algorithms detect walls and cannot expand into or cross over them.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">What is a Visited Cell?</div>
+          <div class="faq-a">A visited cell is a node that the algorithm has evaluated and added to its search history to avoid processing the same position multiple times in cycles.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">What is the Final Path?</div>
+          <div class="faq-a">The connected sequence of steps from the Start Node to the Target Node reconstructed by tracing backward from the target using parent pointers.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">Key Differences: BFS vs DFS vs Dijkstra vs A*</div>
+          <div class="faq-a">
+            <ul style="padding-left:18px;margin:6px 0 0 0;">
+              <li><strong>BFS (Breadth-First):</strong> Explores equally in concentric ripples. Guarantees shortest path on unweighted grids.</li>
+              <li><strong>DFS (Depth-First):</strong> Dives as deep as possible before backtracking. Fast for exploration, but does <em>not</em> guarantee shortest path.</li>
+              <li><strong>Dijkstra:</strong> Always expands the lowest accumulated cost first. Shortest path guaranteed for any non-negative weights.</li>
+              <li><strong>A* (A-Star):</strong> Combines Dijkstra's accumulated distance with a distance estimate (heuristic) towards the target. Explores far fewer cells while still guaranteeing the shortest path!</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" id="btnConfirmHelp">Got It!</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="app-footer">
+    <p>PATHLAB · Educational Pathfinding & Graph Algorithm Visualizer · Runs 100% locally in your browser.</p>
+  </footer>
+
+</div>
+
+<script>
+"use strict";
+
+/* Helper selector */
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+
+/* Board Configuration */
+let ROWS = 22, COLS = 45;
+if (window.innerWidth < 768) { COLS = 27; ROWS = 20; }
+
+let grid = [];
+let els = [];
+let startR = Math.floor(ROWS / 2);
+let startC = Math.floor(COLS * 0.18);
+let endR = Math.floor(ROWS / 2);
+let endC = Math.floor(COLS * 0.82);
+
+/* Interaction States */
+let mouseDown = false;
+let paintMode = "wall"; // "wall" or "erase"
+let moving = null;      // "start" or "end"
+let runToken = 0;
+let busy = false;
+let paused = false;
+
+/* Key function & helpers */
+const key = (r, c) => r * COLS + c;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const h = (r, c) => Math.abs(r - endR) + Math.abs(c - endC);
+
+/* Board Construction */
+function build() {
+  const board = $("#board");
+  grid = Array.from({ length: ROWS }, (_, r) =>
+    Array.from({ length: COLS }, (_, c) => ({ r, c, wall: false }))
+  );
+  board.style.gridTemplateColumns = `repeat(${COLS}, 1fr)`;
+  board.innerHTML = "";
+  els = [];
+
+  for (let r = 0; r < ROWS; r++) {
+    const row = [];
+    for (let c = 0; c < COLS; c++) {
+      const d = document.createElement("div");
+      d.className = "cell";
+      d.dataset.r = r;
+      d.dataset.c = c;
+      d.setAttribute("role", "gridcell");
+      board.appendChild(d);
+      row.push(d);
+    }
+    els.push(row);
+  }
+  paint();
+}
+
+function cls(r, c) {
+  let k = "cell";
+  const g = grid[r][c];
+  if (r === startR && c === startC) k += " start";
+  else if (r === endR && c === endC) k += " end";
+  else if (g.wall) k += " wall";
+  return k;
+}
+
+function paint() {
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      els[r][c].className = cls(r, c);
+      if (r === startR && c === startC) els[r][c].textContent = "S";
+      else if (r === endR && c === endC) els[r][c].textContent = "T";
+      else els[r][c].textContent = "";
+    }
+  }
+}
+
+function clearOverlay() {
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      els[r][c].classList.remove("visited", "frontier", "path");
+    }
+  }
+}
+
+function neigh(r, c) {
+  const out = [];
+  const d = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+  for (const [dr, dc] of d) {
+    const nr = r + dr, nc = c + dc;
+    if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && !grid[nr][nc].wall) {
+      out.push([nr, nc]);
+    }
+  }
+  return out;
+}
+
+/* ============================================================
+   Algorithms: Return { order: [[r,c]...visited], came: Map }
+   Preserves all 8 original algorithms precisely.
+============================================================ */
+
+function bfs() {
+  const q = [[startR, startC]], seen = new Set([key(startR, startC)]), came = new Map(), order = [];
+  let head = 0;
+  while (head < q.length) {
+    const [r, c] = q[head++];
+    order.push([r, c]);
+    if (r === endR && c === endC) break;
+    for (const [nr, nc] of neigh(r, c)) {
+      const k = key(nr, nc);
+      if (!seen.has(k)) {
+        seen.add(k);
+        came.set(k, [r, c]);
+        q.push([nr, nc]);
+      }
+    }
+  }
+  return { order, came };
+}
+
+function dfs() {
+  const st = [[startR, startC]], seen = new Set(), came = new Map(), order = [];
+  while (st.length) {
+    const [r, c] = st.pop();
+    const k = key(r, c);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    order.push([r, c]);
+    if (r === endR && c === endC) break;
+    for (const [nr, nc] of neigh(r, c)) {
+      const nk = key(nr, nc);
+      if (!seen.has(nk)) {
+        if (!came.has(nk)) came.set(nk, [r, c]);
+        st.push([nr, nc]);
+      }
+    }
+  }
+  return { order, came };
+}
+
+function weighted(useH) {
+  const dist = new Map([[key(startR, startC), 0]]), came = new Map(), order = [], done = new Set();
+  const pq = [[useH ? h(startR, startC) : 0, startR, startC]];
+  while (pq.length) {
+    let bi = 0;
+    for (let i = 1; i < pq.length; i++) if (pq[i][0] < pq[bi][0]) bi = i;
+    const [, r, c] = pq.splice(bi, 1)[0];
+    const k = key(r, c);
+    if (done.has(k)) continue;
+    done.add(k);
+    order.push([r, c]);
+    if (r === endR && c === endC) break;
+    const g = dist.get(k);
+    for (const [nr, nc] of neigh(r, c)) {
+      const nk = key(nr, nc);
+      const ng = g + 1;
+      if (ng < (dist.get(nk) ?? Infinity)) {
+        dist.set(nk, ng);
+        came.set(nk, [r, c]);
+        pq.push([ng + (useH ? h(nr, nc) : 0), nr, nc]);
+      }
+    }
+  }
+  return { order, came };
+}
+
+function bidirectionalBfs() {
+  const sk = key(startR, startC), tk = key(endR, endC);
+  if (sk === tk) return { order: [[startR, startC]], came: new Map() };
+  let frontS = [[startR, startC]], frontT = [[endR, endC]];
+  const ps = new Map([[sk, null]]), pt = new Map([[tk, null]]), order = [];
+  let meet = null;
+  while (frontS.length && frontT.length && !meet) {
+    const expandStart = frontS.length <= frontT.length;
+    const frontier = expandStart ? frontS : frontT,
+          own = expandStart ? ps : pt,
+          other = expandStart ? pt : ps,
+          next = [];
+    for (const [r, c] of frontier) {
+      order.push([r, c]);
+      const here = key(r, c);
+      if (other.has(here)) { meet = [r, c]; break; }
+      for (const [nr, nc] of neigh(r, c)) {
+        const nk = key(nr, nc);
+        if (!own.has(nk)) { own.set(nk, [r, c]); next.push([nr, nc]); }
+        if (other.has(nk)) { meet = [nr, nc]; break; }
+      }
+      if (meet) break;
+    }
+    if (expandStart) frontS = next; else frontT = next;
+  }
+  const came = new Map();
+  if (meet) {
+    const left = [];
+    let cur = meet;
+    while (cur) { left.push(cur); cur = ps.get(key(cur[0], cur[1])); }
+    left.reverse();
+    cur = meet;
+    while (key(cur[0], cur[1]) !== tk) { cur = pt.get(key(cur[0], cur[1])); if (!cur) break; left.push(cur); }
+    for (let i = 1; i < left.length; i++) came.set(key(left[i][0], left[i][1]), left[i - 1]);
+    for (const cell of left) if (!order.some(([r, c]) => r === cell[0] && c === cell[1])) order.push(cell);
+  }
+  return { order, came };
+}
+
+function greedyBestFirst() {
+  const open = [[h(startR, startC), startR, startC]], seen = new Set(), came = new Map(), order = [];
+  while (open.length) {
+    let bi = 0;
+    for (let i = 1; i < open.length; i++) if (open[i][0] < open[bi][0]) bi = i;
+    const [, r, c] = open.splice(bi, 1)[0], k = key(r, c);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    order.push([r, c]);
+    if (r === endR && c === endC) break;
+    for (const [nr, nc] of neigh(r, c)) {
+      const nk = key(nr, nc);
+      if (!seen.has(nk) && !came.has(nk)) {
+        came.set(nk, [r, c]);
+        open.push([h(nr, nc), nr, nc]);
+      }
+    }
+  }
+  return { order, came };
+}
+
+function bellmanFord() {
+  const vertices = [];
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (!grid[r][c].wall) vertices.push([r, c]);
+    }
+  }
+  const dist = new Map([[key(startR, startC), 0]]), came = new Map(), order = [];
+  for (let pass = 0; pass < vertices.length - 1; pass++) {
+    let changed = false;
+    for (const [r, c] of vertices) {
+      const u = key(r, c), du = dist.get(u);
+      if (du === undefined) continue;
+      for (const [nr, nc] of neigh(r, c)) {
+        const v = key(nr, nc), alt = du + 1;
+        if (alt < (dist.get(v) ?? Infinity)) {
+          dist.set(v, alt);
+          came.set(v, [r, c]);
+          changed = true;
+        }
+      }
+    }
+    if (!changed) break;
+  }
+  for (const [r, c] of vertices) if (dist.has(key(r, c))) order.push([r, c]);
+  return { order, came };
+}
+
+function jumpPointSearch() {
+  const dist = new Map([[key(startR, startC), 0]]), came = new Map(), order = [], done = new Set(),
+        pq = [[h(startR, startC), 0, startR, startC]];
+  const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+  while (pq.length) {
+    let bi = 0;
+    for (let i = 1; i < pq.length; i++) if (pq[i][0] < pq[bi][0]) bi = i;
+    const [, g, r, c] = pq.splice(bi, 1)[0], k = key(r, c);
+    if (done.has(k) || g !== (dist.get(k) ?? Infinity)) continue;
+    done.add(k);
+    order.push([r, c]);
+    if (r === endR && c === endC) break;
+    for (const [dr, dc] of dirs) {
+      let nr = r + dr, nc = c + dc, steps = 0;
+      while (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && !grid[nr][nc].wall) {
+        steps++;
+        const nk = key(nr, nc), ng = g + steps;
+        if (ng < (dist.get(nk) ?? Infinity)) {
+          dist.set(nk, ng);
+          came.set(nk, [r, c]);
+          pq.push([ng + h(nr, nc), ng, nr, nc]);
+        }
+        nr += dr; nc += dc;
+      }
+    }
+  }
+  return { order, came };
+}
+
+/* Algorithm Registry & Metadata */
+const ALGOS = {
+  bfs,
+  dfs,
+  dijkstra: () => weighted(false),
+  astar: () => weighted(true),
+  bibfs: bidirectionalBfs,
+  greedy: greedyBestFirst,
+  bellmanford: bellmanFord,
+  jps: jumpPointSearch
+};
+
+const ALGO_INFO = {
+  astar: {
+    name: "A* Search",
+    type: "Informed Search",
+    guarantee: true,
+    desc: "Combines distance from start with estimated distance to target. Highly efficient and aims directly at the goal.",
+    exploreStyle: "Directed heuristic wave towards the target",
+    usefulFor: "Video games, robotics, GPS navigation systems."
+  },
+  dijkstra: {
+    name: "Dijkstra’s Algorithm",
+    type: "Informed / Cost Search",
+    guarantee: true,
+    desc: "Expands the lowest accumulated cost node first. Classic benchmark for shortest paths.",
+    exploreStyle: "Uniform cost expansion spreading in all directions",
+    usefulFor: "Network routing, transit network analysis, weighted maps."
+  },
+  bfs: {
+    name: "Breadth-First Search (BFS)",
+    type: "Uninformed Search",
+    guarantee: true,
+    desc: "Explores nodes level by level using a FIFO queue. Perfect baseline for unweighted grids.",
+    exploreStyle: "Even circular ripple spreading outward in all directions",
+    usefulFor: "Social network connections (degrees of separation), peer-to-peer discovery."
+  },
+  dfs: {
+    name: "Depth-First Search (DFS)",
+    type: "Uninformed Search",
+    guarantee: false,
+    desc: "Explores deep into branches before backtracking. Fast for finding any path, but path is often winding.",
+    exploreStyle: "Deep winding probe hitting dead ends and backtracking",
+    usefulFor: "Maze solving, cycle detection, topological sorting."
+  },
+  bibfs: {
+    name: "Bidirectional BFS",
+    type: "Uninformed Search",
+    guarantee: true,
+    desc: "Runs two searches simultaneously from Start and Target until their frontiers meet.",
+    exploreStyle: "Two expanding ripples colliding in the middle",
+    usefulFor: "Large graphs where search space grows exponentially."
+  },
+  greedy: {
+    name: "Greedy Best-First Search",
+    type: "Informed Search",
+    guarantee: false,
+    desc: "Follows the heuristic distance exclusively, ignoring past cost. Fast but easily trapped by concave walls.",
+    exploreStyle: "Direct spearhead aimed at target",
+    usefulFor: "Fast heuristic approximations when optimal distance is not required."
+  },
+  bellmanford: {
+    name: "Bellman-Ford Algorithm",
+    type: "Dynamic Programming",
+    guarantee: true,
+    desc: "Repeatedly relaxes all edges across passes. Capable of handling negative edge costs in graphs.",
+    exploreStyle: "Multi-pass global relaxation of all reachable grid cells",
+    usefulFor: "Distance-vector routing protocols (e.g. RIP), currency arbitrage."
+  },
+  jps: {
+    name: "Jump Point Search (Ray Mode)",
+    type: "Pruning / Ray Search",
+    guarantee: true,
+    desc: "Scans straight corridors in rays to identify key turning points, accelerating traversal.",
+    exploreStyle: "Straight ray jumps along horizontal and vertical lines",
+    usefulFor: "Fast pathfinding on uniform grid maps."
+  }
+};
+
+/* Path Reconstruction */
+function reconstruct(came) {
+  const raw = [];
+  let cur = [endR, endC];
+  if (!came.has(key(endR, endC)) && !(startR === endR && startC === endC)) return null;
+  while (cur) {
+    raw.push(cur);
+    if (cur[0] === startR && cur[1] === startC) break;
+    cur = came.get(key(cur[0], cur[1]));
+    if (!cur) return null;
+  }
+  raw.reverse();
+  const path = [];
+  for (let i = 0; i < raw.length; i++) {
+    if (i === 0) { path.push(raw[i]); continue; }
+    const [ar, ac] = raw[i - 1], [br, bc] = raw[i];
+    const dr = Math.sign(br - ar), dc = Math.sign(bc - ac);
+    let r = ar + dr, c = ac + dc;
+    while (r !== br || c !== bc) {
+      path.push([r, c]);
+      r += dr; c += dc;
+    }
+    path.push(raw[i]);
+  }
+  return path;
+}
+
+/* Speed calculation */
+function getDelay() {
+  const val = +$("#speed").value;
+  // min 1 (slow ~45ms) to max 50 (fast ~0ms)
+  return Math.max(0, 52 - val);
+}
+
+function updateSpeedLabel() {
+  const val = +$("#speed").value;
+  let label = "Normal";
+  if (val <= 18) label = "Slow";
+  else if (val >= 42) label = "Fast";
+  $("#speedLabel").textContent = label;
+}
+
+/* Visualizer Core */
+async function visualize() {
+  if (busy) return;
+  busy = true;
+  paused = false;
+  setBusy(true);
+  clearOverlay();
+
+  const token = ++runToken;
+  const algoId = $("#algo").value;
+  const info = ALGO_INFO[algoId];
+
+  updateStatus("running", `Searching with ${info.name}... Click Pause or Stop anytime.`);
+  $("#s_algo").textContent = info.name;
+  $("#s_res").textContent = "Searching...";
+  $("#s_res").style.color = "var(--color-cyan)";
+  $("#s_res_sub").textContent = "Evaluating grid";
+
+  const started = performance.now();
+  let result;
+  try {
+    result = ALGOS[algoId]();
+  } catch (err) {
+    console.error(err);
+    updateStatus("error", `Algorithm failed due to an error: ${err.message}`);
+    setBusy(false);
+    busy = false;
+    return;
+  }
+  const computeMs = performance.now() - started;
+  const { order, came } = result;
+
+  let visitedCount = 0;
+  for (const [r, c] of order) {
+    while (paused && token === runToken) await sleep(60);
+    if (token !== runToken) {
+      // Stopped or reset
+      return;
+    }
+    if (!(r === startR && c === startC) && !(r === endR && c === endC)) {
+      els[r][c].classList.add("visited");
+    }
+    visitedCount++;
+    $("#s_vis").textContent = visitedCount;
+    const delay = getDelay();
+    if (delay > 0) await sleep(delay);
+  }
+
+  const path = reconstruct(came);
+  const reached = !!path;
+
+  if (reached && path) {
+    for (const [r, c] of path) {
+      while (paused && token === runToken) await sleep(60);
+      if (token !== runToken) return;
+      if (!(r === startR && c === startC) && !(r === endR && c === endC)) {
+        els[r][c].classList.add("path");
+      }
+      await sleep(18);
+    }
+    const pathLen = path.length - 1;
+    $("#s_path").textContent = pathLen;
+    $("#s_res").textContent = info.guarantee ? "Shortest Path" : "Path Found";
+    $("#s_res").style.color = info.guarantee ? "var(--color-green)" : "var(--color-amber)";
+    $("#s_res_sub").textContent = info.guarantee ? "Guaranteed optimal" : "May not be shortest";
+
+    updateStatus("success", `🎉 Path found! Target reached in ${pathLen} steps (explored ${visitedCount} cells in ${computeMs.toFixed(2)} ms).`);
+  } else {
+    $("#s_path").textContent = "0";
+    $("#s_res").textContent = "No Path";
+    $("#s_res").style.color = "var(--color-red)";
+    $("#s_res_sub").textContent = "Target unreachable";
+
+    updateStatus("error", `⚠️ No path exists! The Target is completely blocked by walls.`);
+  }
+
+  $("#s_time").textContent = computeMs.toFixed(3) + " ms";
+  busy = false;
+  paused = false;
+  setBusy(false);
+}
+
+function stopVisualization() {
+  runToken++;
+  busy = false;
+  paused = false;
+  setBusy(false);
+  updateStatus("", "Visualization stopped by user.");
+  $("#s_res").textContent = "Stopped";
+  $("#s_res").style.color = "var(--text-muted)";
+  $("#s_res_sub").textContent = "Halted";
+}
+
+function setBusy(b) {
+  ["run", "maze", "clearWalls", "clearPath", "resetGrid", "algo", "compare", "btnRunCompare"].forEach(id => {
+    const el = $("#" + id);
+    if (el) el.disabled = b;
+  });
+  $("#pause").disabled = !b;
+  $("#stop").disabled = !b;
+  if (!b) {
+    $("#pause").innerHTML = "<span>⏸</span> Pause";
+  }
+}
+
+function updateStatus(type, msg) {
+  const banner = $("#statusBanner");
+  banner.className = "status-banner " + (type || "");
+  $("#statusText").innerHTML = msg;
+}
+
+function resetStats() {
+  $("#s_vis").textContent = "0";
+  $("#s_path").textContent = "0";
+  $("#s_time").textContent = "—";
+  $("#s_res").textContent = "Ready";
+  $("#s_res").style.color = "var(--color-green)";
+  $("#s_res_sub").textContent = "Standing by";
+  updateStatus("", `<strong>Ready:</strong> Select an algorithm and click <strong>Visualize</strong> to begin.`);
+}
+
+/* Recursive Division Maze */
+function addWall(r, c) {
+  if ((r === startR && c === startC) || (r === endR && c === endC)) return;
+  grid[r][c].wall = true;
+}
+function orient(hh, ww) {
+  return ww < hh ? "h" : (hh < ww ? "v" : (Math.random() < 0.5 ? "h" : "v"));
+}
+function divide(rMin, rMax, cMin, cMax, o) {
+  if (rMax - rMin < 2 || cMax - cMin < 2) return;
+  if (o === "h") {
+    const rows = [];
+    for (let r = rMin + 1; r < rMax; r += 2) rows.push(r);
+    if (!rows.length) return;
+    const wr = rows[Math.floor(Math.random() * rows.length)];
+    const gaps = [];
+    for (let c = cMin; c <= cMax; c += 2) gaps.push(c);
+    const gap = gaps[Math.floor(Math.random() * gaps.length)];
+    for (let c = cMin; c <= cMax; c++) if (c !== gap) addWall(wr, c);
+    divide(rMin, wr - 1, cMin, cMax, orient(wr - 1 - rMin, cMax - cMin));
+    divide(wr + 1, rMax, cMin, cMax, orient(rMax - wr - 1, cMax - cMin));
+  } else {
+    const cols = [];
+    for (let c = cMin + 1; c < cMax; c += 2) cols.push(c);
+    if (!cols.length) return;
+    const wc = cols[Math.floor(Math.random() * cols.length)];
+    const gaps = [];
+    for (let r = rMin; r <= rMax; r += 2) gaps.push(r);
+    const gap = gaps[Math.floor(Math.random() * gaps.length)];
+    for (let r = rMin; r <= rMax; r++) if (r !== gap) addWall(r, wc);
+    divide(rMin, rMax, cMin, wc - 1, orient(rMax - rMin, wc - 1 - cMin));
+    divide(rMin, rMax, wc + 1, cMax, orient(rMax - rMin, cMax - wc - 1));
+  }
+}
+function generateMaze() {
+  if (busy) return;
+  runToken++;
+  paused = false;
+  busy = false;
+  setBusy(false);
+  clearOverlay();
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      grid[r][c].wall = false;
+    }
+  }
+  divide(0, ROWS - 1, 0, COLS - 1, orient(ROWS, COLS));
+  // Keep start/target and neighbors clear
+  for (const [br, bc] of [[startR, startC], [endR, endC]]) {
+    grid[br][bc].wall = false;
+    for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+      const r = br + dr, c = bc + dc;
+      if (r >= 0 && r < ROWS && c >= 0 && c < COLS) grid[r][c].wall = false;
+    }
+  }
+  paint();
+  resetStats();
+  updateStatus("", "Generated a new recursive division maze. Click Visualize to test!");
+}
+
+/* Grid Mouse & Touch Interaction */
+function cellAt(target) {
+  if (!target || !target.classList || !target.classList.contains("cell")) return null;
+  return [+target.dataset.r, +target.dataset.c];
+}
+
+function handlePointerDown(e) {
+  if (busy) return;
+  const cc = cellAt(e.target);
+  if (!cc) return;
+  e.preventDefault();
+  mouseDown = true;
+  const [r, c] = cc;
+  if (r === startR && c === startC) {
+    moving = "start";
+  } else if (r === endR && c === endC) {
+    moving = "end";
+  } else {
+    paintMode = grid[r][c].wall ? "erase" : "wall";
+    grid[r][c].wall = (paintMode === "wall");
+    els[r][c].className = cls(r, c);
+  }
+}
+
+function handlePointerMove(e) {
+  if (!mouseDown || busy) return;
+  let target = e.target;
+  if (e.touches && e.touches.length) {
+    target = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
+  }
+  const cc = cellAt(target);
+  if (!cc) return;
+  const [r, c] = cc;
+
+  if (moving) {
+    if (grid[r][c].wall) return;
+    if (moving === "start") {
+      if (r === endR && c === endC) return;
+      startR = r; startC = c;
+    } else {
+      if (r === startR && c === startC) return;
+      endR = r; endC = c;
+    }
+    paint();
+  } else {
+    if ((r === startR && c === startC) || (r === endR && c === endC)) return;
+    grid[r][c].wall = (paintMode === "wall");
+    els[r][c].className = cls(r, c);
+  }
+}
+
+function handlePointerUp() {
+  mouseDown = false;
+  moving = null;
+}
+
+const boardEl = $("#board");
+boardEl.addEventListener("mousedown", handlePointerDown);
+boardEl.addEventListener("mousemove", handlePointerMove);
+document.addEventListener("mouseup", handlePointerUp);
+
+boardEl.addEventListener("touchstart", handlePointerDown, { passive: false });
+boardEl.addEventListener("touchmove", handlePointerMove, { passive: false });
+document.addEventListener("touchend", handlePointerUp);
+
+/* Algorithm Info Card Updater */
+function updateAlgoInfoCard() {
+  const algoId = $("#algo").value;
+  const info = ALGO_INFO[algoId];
+  $("#summaryAlgoName").textContent = info.name;
+  $("#summaryAlgoDesc").textContent = info.desc;
+  $("#s_algo").textContent = info.name;
+
+  const badge = $("#summaryGuaranteeBadge");
+  if (info.guarantee) {
+    badge.className = "badge badge-success";
+    badge.textContent = "✓ Guarantees Shortest Path";
+  } else {
+    badge.className = "badge badge-warning";
+    badge.textContent = "✗ Shortest Path Not Guaranteed";
+  }
+  $("#summaryTypeBadge").textContent = info.type;
+}
+
+/* Compare Algorithms Feature */
+function runComparison() {
+  if (busy) return;
+  const algoKeys = ["astar", "dijkstra", "bfs", "dfs", "bibfs", "greedy", "bellmanford", "jps"];
+  const rows = [];
+
+  let bestExplored = { name: "", count: Infinity };
+  let bestPath = { name: "", length: Infinity };
+  let bestTime = { name: "", time: Infinity };
+
+  for (const id of algoKeys) {
+    const info = ALGO_INFO[id];
+    let elapsed = 0;
+    let res = null;
+    let errorOccurred = false;
+
+    try {
+      ALGOS[id](); // warm-up run so JIT compilation doesn't penalise the first algorithms
+      const ts = [];
+      for (let i = 0; i < 5; i++) { const t0 = performance.now(); res = ALGOS[id](); ts.push(performance.now() - t0); }
+      ts.sort((a, b) => a - b); elapsed = ts[2]; // median of 5 runs
+    } catch (err) {
+      errorOccurred = true;
+    }
+
+    if (errorOccurred) {
+      rows.push({
+        id,
+        name: info.name,
+        visited: "—",
+        path: "—",
+        time: "—",
+        guarantee: info.guarantee ? "Yes ✓" : "No",
+        status: "Algorithm Failed",
+        reached: false
+      });
+      continue;
+    }
+
+    const path = reconstruct(res.came);
+    const reached = !!path;
+    const pathLen = reached && path ? (path.length - 1) : null;
+    const visitedCount = res.order.length;
+
+    if (reached && pathLen !== null) {
+      if (visitedCount < bestExplored.count) {
+        bestExplored = { name: info.name, count: visitedCount };
+      }
+      if (pathLen < bestPath.length) {
+        bestPath = { name: info.name, length: pathLen };
+      }
+      if (elapsed < bestTime.time) {
+        bestTime = { name: info.name, time: elapsed };
+      }
+    }
+
+    rows.push({
+      id,
+      name: info.name,
+      visited: visitedCount,
+      path: pathLen !== null ? pathLen : "No Path",
+      time: elapsed.toFixed(3) + " ms",
+      timeNum: elapsed,
+      guarantee: info.guarantee ? "Yes ✓" : "No ✗",
+      status: reached ? "Target Reached" : "No Path Found",
+      reached
+    });
+  }
+
+  // Render Table
+  let html = `
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th data-tooltip="Search Algorithm name">Algorithm</th>
+          <th data-tooltip="Total grid cells inspected before finding path">Cells Explored ℹ</th>
+          <th data-tooltip="Number of steps from start to target">Path Length ℹ</th>
+          <th data-tooltip="JavaScript execution duration in milliseconds">Execution Time ℹ</th>
+          <th data-tooltip="Is the shortest path mathematically guaranteed?">Shortest Path Guaranteed? ℹ</th>
+          <th data-tooltip="Whether a route to target was successfully found">Result ℹ</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  rows.forEach(r => {
+    const isOptimalPath = r.reached && (r.path === bestPath.length);
+    const isFewestCells = r.reached && (r.visited === bestExplored.count);
+    const highlight = isOptimalPath && isFewestCells;
+
+    html += `
+      <tr class="${highlight ? 'highlight' : ''}">
+        <td><strong>${r.name}</strong></td>
+        <td><span style="color:#38bdf8;font-weight:700;">${r.visited}</span></td>
+        <td><span style="color:var(--color-amber);font-weight:700;">${r.path}</span></td>
+        <td><code>${r.time}</code></td>
+        <td><span class="${r.guarantee.includes('Yes') ? 'badge badge-success' : 'badge badge-warning'}">${r.guarantee}</span></td>
+        <td><span style="color:${r.reached ? 'var(--color-green)' : 'var(--color-red)'};font-weight:600;">${r.status}</span></td>
+      </tr>
+    `;
+  });
+
+  html += `</tbody></table><p style="font-size:12px;color:var(--text-muted);margin-top:8px">Times are the median of 5 runs. Bellman-Ford relaxes the whole reachable grid and never stops at the target, so its explored count is naturally the highest. Greedy and DFS may explore fewer cells but are not guaranteed to find the shortest path.</p>`;
+  $("#compareContainer").innerHTML = html;
+
+  // Update Insights
+  $("#compareInsights").style.display = "grid";
+  $("#bestExploredAlgo").textContent = bestExplored.name ? `${bestExplored.name} (${bestExplored.count} cells)` : "None reached";
+  $("#bestPathAlgo").textContent = bestPath.name ? `${bestPath.name} (${bestPath.length} steps)` : "None reached";
+  $("#bestTimeAlgo").textContent = bestTime.name ? `${bestTime.name} (${bestTime.time.toFixed(3)} ms)` : "None reached";
+
+  // Render Visual Bar Chart for Cells Explored
+  const maxVisited = Math.max(...rows.filter(r => typeof r.visited === "number").map(r => r.visited), 1);
+  let chartHtml = "";
+  rows.forEach(r => {
+    if (typeof r.visited === "number") {
+      const pct = Math.round((r.visited / maxVisited) * 100);
+      chartHtml += `
+        <div class="chart-row">
+          <div class="chart-label" title="${r.name}">${r.name}</div>
+          <div class="chart-bar-bg">
+            <div class="chart-bar-fill" style="width:${pct}%;"></div>
+          </div>
+          <div class="chart-val">${r.visited}</div>
+        </div>
+      `;
+    }
+  });
+  $("#chartBars").innerHTML = chartHtml;
+}
+
+/* ============================================================
+   Learning Mode Database (All 8 algorithms)
+   Suitable for college project demonstrations & student reviews
+============================================================ */
+const LEARNING_DATA = {
+  astar: {
+    title: "A* (A-Star) Search",
+    tagline: "The industry standard heuristic search algorithm.",
+    explanation: "A* combines the guaranteed optimality of Dijkstra's algorithm with the speed of greedy search. It evaluates nodes using the formula <strong>f(n) = g(n) + h(n)</strong>, where <em>g(n)</em> is the actual cost from the start node, and <em>h(n)</em> is the estimated heuristic distance to the target.",
+    steps: [
+      "Initialize open list with start node having f(start) = 0 + h(start).",
+      "Pick node with smallest f(n) from open list.",
+      "If node is target, reconstruct shortest path.",
+      "Otherwise, examine all walkable neighbors. Compute tentative g(neighbor) = g(current) + move_cost.",
+      "If tentative g is lower than previously recorded, update neighbor's parent and recompute f(neighbor).",
+      "Repeat until target is reached or open list is empty."
+    ],
+    advantages: [
+      "Guarantees the shortest path when using an admissible heuristic (e.g. Manhattan distance on grid).",
+      "Drastically reduces explored cells compared to Dijkstra or BFS by aiming towards the goal.",
+      "Highly adaptable to weighted terrains and multidimensional spaces."
+    ],
+    disadvantages: [
+      "Requires substantial memory to maintain the open and closed lists (O(b^d) in worst case).",
+      "Performance depends heavily on the accuracy and admissibility of the heuristic function."
+    ],
+    timeComplexity: "O(E) in best case, O(b^d) worst-case",
+    spaceComplexity: "O(b^d) — stores all generated nodes in memory",
+    guarantee: "Yes (with an admissible heuristic like Manhattan distance)",
+    whenToUse: "The best choice for video games, GPS navigation, and robotics where you know the coordinates of your target and need the true shortest path quickly."
+  },
+  dijkstra: {
+    title: "Dijkstra’s Algorithm",
+    tagline: "The father of pathfinding and shortest path exploration.",
+    explanation: "Dijkstra's algorithm finds the shortest path between nodes by expanding outward uniformly from the starting node in order of increasing accumulated cost. On an unweighted grid with uniform cost of 1 per move, Dijkstra behaves identically to Breadth-First Search.",
+    steps: [
+      "Assign distance 0 to start node, and Infinity to all other nodes.",
+      "Insert start node into priority queue ordered by distance.",
+      "Pop node with lowest distance. Mark as visited.",
+      "For each unvisited neighbor, calculate distance via current node.",
+      "If calculated distance is less than neighbor's current distance, update it and record current node as parent.",
+      "Repeat until target is visited or queue is empty."
+    ],
+    advantages: [
+      "Always guarantees the mathematically shortest path.",
+      "Works on weighted graphs with non-negative edge costs.",
+      "Computes shortest paths from start to all other reachable nodes simultaneously."
+    ],
+    disadvantages: [
+      "Explores blindly in all directions without heading toward the target, inspecting unnecessary nodes.",
+      "Higher memory consumption and compute time than heuristic searches like A*."
+    ],
+    timeComplexity: "O((V + E) log V) with a binary heap",
+    spaceComplexity: "O(V) to store distances and priority queue",
+    guarantee: "Yes (for all graphs with non-negative edge weights)",
+    whenToUse: "When edge weights vary (e.g. mud, mountains, highways) and no reliable heuristic estimate to the target is known."
+  },
+  bfs: {
+    title: "Breadth-First Search (BFS)",
+    tagline: "Simple, reliable, and optimal for unweighted graphs.",
+    explanation: "BFS explores the grid level by level using a First-In, First-Out (FIFO) queue. It examines all immediate neighbors of the start node before moving on to neighbors of neighbors. Because all grid steps have equal cost (1), the first time BFS reaches the target is guaranteed to be via the fewest steps.",
+    steps: [
+      "Push start node into a FIFO queue and mark it as visited.",
+      "Dequeue next node from front of queue.",
+      "If node is target, stop and reconstruct path.",
+      "Otherwise, push all unvisited walkable neighbors into queue, marking each visited and setting their parent.",
+      "Repeat until target is reached or queue is empty."
+    ],
+    advantages: [
+      "Guarantees the shortest path on unweighted graphs.",
+      "Extremely simple to implement with a standard queue.",
+      "Never gets stuck in infinite loops or deep dead ends."
+    ],
+    disadvantages: [
+      "Consumes large amounts of memory as the frontier grows exponentially with search depth.",
+      "Explores equally in all directions, wasting time exploring opposite directions from the target."
+    ],
+    timeComplexity: "O(V + E) — linear in vertices and edges",
+    spaceComplexity: "O(V) — queue holds nodes at the current frontier",
+    guarantee: "Yes (on unweighted / uniform-cost grids)",
+    whenToUse: "Ideal for unweighted mazes, network broadcast routing, and discovering shortest degree of separation in social graphs."
+  },
+  dfs: {
+    title: "Depth-First Search (DFS)",
+    tagline: "Explores deep before wide; fast for finding any route.",
+    explanation: "DFS follows a single branch as deeply as possible using a LIFO stack (or recursion) before backtracking when encountering an obstacle or dead end. Because it does not explore layer by layer, it rarely returns the shortest path and often yields a lengthy, winding route.",
+    steps: [
+      "Push start node onto a LIFO stack.",
+      "Pop top node. If already visited, continue.",
+      "Mark node as visited.",
+      "If node is target, stop and trace back path.",
+      "Push all unvisited walkable neighbors onto stack.",
+      "Repeat until target is found or stack is empty."
+    ],
+    advantages: [
+      "Requires minimal memory (proportional to search depth, not graph size).",
+      "Very fast if a solution happens to lie along the initial path chosen.",
+      "Core building block for topological sorting and cycle detection algorithms."
+    ],
+    disadvantages: [
+      "Does NOT guarantee shortest path — often produces very long and unnatural paths.",
+      "Can traverse the entire grid before stumbling into a target located right next to the start."
+    ],
+    timeComplexity: "O(V + E)",
+    spaceComplexity: "O(V) in worst case; O(d) average depth",
+    guarantee: "No (finds a valid path, but not the shortest)",
+    whenToUse: "Use for maze generation, topological ordering, cycle detection, or when you just need to know if two components are connected regardless of route length."
+  },
+  bibfs: {
+    title: "Bidirectional Breadth-First Search",
+    tagline: "Searches outward from both ends to halve exploration depth.",
+    explanation: "Bidirectional BFS initiates two simultaneous breadth-first searches: one growing forward from the Start Node and another growing backward from the Target Node. When the frontiers meet, the two partial paths are joined together to form the complete shortest path.",
+    steps: [
+      "Initialize forward queue with Start node and backward queue with Target node.",
+      "Alternately expand the smaller frontier level by level.",
+      "For each expansion, check if neighbor has already been visited by the opposite frontier.",
+      "If an intersection node is found, trace parents back to Start and Target.",
+      "Combine both path halves to output the final route."
+    ],
+    advantages: [
+      "Significantly reduces explored space from O(b^d) to O(2 * b^(d/2)).",
+      "Guarantees the shortest path on unweighted graphs.",
+      "Much faster than standard BFS in large open maps."
+    ],
+    disadvantages: [
+      "Requires knowing the target node's exact position in advance.",
+      "More complex state tracking to detect boundary collisions between frontiers."
+    ],
+    timeComplexity: "O(b^(d/2)) where b is branching factor and d is distance",
+    spaceComplexity: "O(b^(d/2))",
+    guarantee: "Yes",
+    whenToUse: "When both start and destination are known in advance and the search graph is large, such as peer-to-peer route discovery."
+  },
+  greedy: {
+    title: "Greedy Best-First Search",
+    tagline: "Chases the goal aggressively using only estimated distance.",
+    explanation: "Greedy Best-First Search evaluates nodes strictly by heuristic distance: <strong>f(n) = h(n)</strong>. It completely ignores how many steps were taken from the start. While it sprints toward the target quickly in open terrain, it is vulnerable to running into dead ends or getting trapped by concave walls.",
+    steps: [
+      "Insert start node into priority queue sorted by h(n) (Manhattan distance).",
+      "Pop node closest to target according to heuristic.",
+      "If node is target, stop.",
+      "Add unvisited neighbors to queue prioritized by their heuristic distance.",
+      "Repeat until target reached or queue empty."
+    ],
+    advantages: [
+      "Often reaches the target exploring far fewer cells than BFS or Dijkstra in open spaces.",
+      "Extremely fast execution time."
+    ],
+    disadvantages: [
+      "Does NOT guarantee shortest path; can take awkward, elongated detours.",
+      "Susceptible to false paths and local minima created by walls."
+    ],
+    timeComplexity: "O(b^m) where m is maximum depth",
+    spaceComplexity: "O(b^m)",
+    guarantee: "No",
+    whenToUse: "When speed is paramount and finding any quick approximation of a path is sufficient."
+  },
+  bellmanford: {
+    title: "Bellman-Ford Algorithm",
+    tagline: "Dynamic programming shortest path capable of handling negative weights.",
+    explanation: "Bellman-Ford operates by relaxing all directed edges in the graph <em>(V - 1)</em> times. If an edge relaxation produces a lower cost, distance and parent pointers are updated. Unlike Dijkstra, Bellman-Ford can detect negative cycles and calculate paths on graphs with negative edge weights.",
+    steps: [
+      "Set distance to Start as 0 and all other nodes to Infinity.",
+      "Perform (V - 1) full relaxation passes over every edge in the graph.",
+      "In each pass, for each edge (u, v), if dist[u] + cost < dist[v], update dist[v] and set parent.",
+      "An optional V-th pass checks for negative weight cycles.",
+      "Trace backward from target to reconstruct the optimal route."
+    ],
+    advantages: [
+      "Versatile and robust; handles negative edge weights.",
+      "Can detect unreachable negative weight cycles in graphs."
+    ],
+    disadvantages: [
+      "Much slower than Dijkstra (O(V * E) vs O(E log V)).",
+      "On uniform positive cost grids, does redundant passes over all edges."
+    ],
+    timeComplexity: "O(V * E) — quadratic in graph size",
+    spaceComplexity: "O(V) for storing distances",
+    guarantee: "Yes (when no negative cycles exist)",
+    whenToUse: "Distance-vector routing protocols (like RIP in computer networking) and financial modeling where negative edge costs represent profit or arbitrage."
+  },
+  jps: {
+    title: "Jump Point Search (Ray Mode)",
+    tagline: "Corridor ray expansion to accelerate grid search.",
+    explanation: "Jump Point Search optimizes grid search by pruning symmetry and scanning straight rays along horizontal and vertical lines. In this 4-directional educational ray implementation, the algorithm shoots straight rays through unobstructed corridors and retains key turning points, avoiding step-by-step neighbor expansion in open halls.",
+    steps: [
+      "Start at origin with initial priority queue.",
+      "From current jump point, cast directional rays along cardinal axes.",
+      "Continue along ray until an obstacle, target, or boundary is encountered.",
+      "Record valid ray locations as turning points with computed accumulated distance.",
+      "Queue jump points and prioritize using Manhattan heuristic.",
+      "Reconstruct full interpolated route from parent jump points."
+    ],
+    advantages: [
+      "Reduces priority queue insertions significantly by jumping over intermediate corridor cells.",
+      "Maintains shortest path guarantee on uniform grids."
+    ],
+    disadvantages: [
+      "Ray lookahead operations incur additional step-scanning logic in code.",
+      "Less beneficial in dense, chaotic mazes with few straight corridors."
+    ],
+    timeComplexity: "O(E) with significantly smaller constant factor in open maps",
+    spaceComplexity: "O(V)",
+    guarantee: "Yes",
+    whenToUse: "Real-time strategy games (RTS) and large warehouse grid navigation with expansive straight corridors."
+  }
+};
+
+function renderLearningCard(algoKey) {
+  const data = LEARNING_DATA[algoKey];
+  if (!data) return;
+
+  const stepsList = data.steps.map(s => `<li>${s}</li>`).join("");
+  const advList = data.advantages.map(a => `<li>${a}</li>`).join("");
+  const disList = data.disadvantages.map(d => `<li>${d}</li>`).join("");
+
+  $("#learnDetailCard").innerHTML = `
+    <div class="learn-card-header">
+      <div>
+        <h3 class="learn-card-title">${data.title}</h3>
+        <p style="margin:2px 0 0 0;font-size:13px;color:var(--color-cyan);">${data.tagline}</p>
+      </div>
+      <div>
+        <span class="${data.guarantee.includes('Yes') ? 'badge badge-success' : 'badge badge-warning'}">
+          ${data.guarantee.includes('Yes') ? '✓ Shortest Path Guaranteed' : '✗ Shortest Path NOT Guaranteed'}
+        </span>
+      </div>
+    </div>
+
+    <div class="learn-section">
+      <h4>Simple Explanation</h4>
+      <p>${data.explanation}</p>
+    </div>
+
+    <div class="learn-section">
+      <h4>Step-by-Step Working</h4>
+      <ol>${stepsList}</ol>
+    </div>
+
+    <div class="learn-grid-2">
+      <div class="learn-section">
+        <h4>Advantages</h4>
+        <ul>${advList}</ul>
+      </div>
+      <div class="learn-section">
+        <h4>Disadvantages</h4>
+        <ul>${disList}</ul>
+      </div>
+    </div>
+
+    <div class="learn-grid-2" style="margin-top:var(--space-1);">
+      <div class="learn-section">
+        <h4>Time Complexity</h4>
+        <div class="badge-metric">${data.timeComplexity}</div>
+      </div>
+      <div class="learn-section">
+        <h4>Space Complexity</h4>
+        <div class="badge-metric">${data.spaceComplexity}</div>
+      </div>
+    </div>
+
+    <div class="learn-section" style="margin-top:var(--space-2);background:rgba(34,211,238,0.06);padding:10px 14px;border-radius:var(--radius-sm);border:1px solid rgba(34,211,238,0.2);">
+      <h4 style="color:var(--color-cyan);">When should I use this?</h4>
+      <p style="color:var(--text-primary);">${data.whenToUse}</p>
+    </div>
+  `;
+}
+
+/* Event Listeners Initialization */
+function initEvents() {
+  // Visualize
+  $("#run").onclick = visualize;
+
+  // Pause / Resume
+  $("#pause").onclick = () => {
+    if (!busy) return;
+    paused = !paused;
+    $("#pause").innerHTML = paused ? "<span>▶</span> Resume" : "<span>⏸</span> Pause";
+    updateStatus("running", paused ? "Visualization paused. Click Resume to continue." : "Visualization resumed.");
+    $("#s_res").textContent = paused ? "Paused" : "Searching...";
+    $("#s_res").style.color = paused ? "var(--color-amber)" : "var(--color-cyan)";
+    $("#s_res_sub").textContent = paused ? "Execution paused" : "Evaluating grid";
+  };
+
+  // Stop
+  $("#stop").onclick = stopVisualization;
+
+  // Clear Walls
+  $("#clearWalls").onclick = () => {
+    if (busy) return;
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        grid[r][c].wall = false;
+      }
+    }
+    paint();
+    updateStatus("", "Walls cleared. Start and target positions preserved.");
+  };
+
+  // Clear Path
+  $("#clearPath").onclick = () => {
+    runToken++;
+    busy = false;
+    paused = false;
+    setBusy(false);
+    clearOverlay();
+    resetStats();
+  };
+
+  // Reset Entire Grid
+  $("#resetGrid").onclick = () => {
+    runToken++;
+    busy = false;
+    paused = false;
+    setBusy(false);
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        grid[r][c].wall = false;
+      }
+    }
+    startR = Math.floor(ROWS / 2);
+    startC = Math.floor(COLS * 0.18);
+    endR = Math.floor(ROWS / 2);
+    endC = Math.floor(COLS * 0.82);
+    clearOverlay();
+    paint();
+    resetStats();
+    updateStatus("", "Grid completely reset to default state.");
+  };
+
+  // Generate Maze
+  $("#maze").onclick = generateMaze;
+
+  // Algorithm select change
+  $("#algo").onchange = () => {
+    updateAlgoInfoCard();
+    resetStats();
+  };
+
+  // Speed Slider
+  $("#speed").oninput = updateSpeedLabel;
+
+  // Quick Start Guide toggle
+  const guideCard = $("#quickStartGuide");
+  $("#btnToggleGuide").onclick = () => {
+    guideCard.classList.toggle("collapsed");
+    const isHidden = guideCard.classList.contains("collapsed");
+    $("#guideBtnText").textContent = isHidden ? "Show Guide" : "Hide Guide";
+  };
+  $("#btnCloseGuide").onclick = () => {
+    guideCard.classList.add("collapsed");
+    $("#guideBtnText").textContent = "Show Guide";
+  };
+
+  // Help Modal
+  const helpModal = $("#helpModal");
+  $("#btnOpenHelp").onclick = () => helpModal.classList.add("open");
+  $("#btnCloseHelp").onclick = () => helpModal.classList.remove("open");
+  $("#btnConfirmHelp").onclick = () => helpModal.classList.remove("open");
+  helpModal.onclick = (e) => {
+    if (e.target === helpModal) helpModal.classList.remove("open");
+  };
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && helpModal.classList.contains("open")) {
+      helpModal.classList.remove("open");
+    }
+  });
+
+  // Tabs
+  $("#tabBtnCompare").onclick = () => {
+    $("#tabBtnCompare").classList.add("active");
+    $("#tabBtnLearn").classList.remove("active");
+    $("#tabCompare").style.display = "block";
+    $("#tabLearn").style.display = "none";
+  };
+  $("#tabBtnLearn").onclick = () => {
+    $("#tabBtnLearn").classList.add("active");
+    $("#tabBtnCompare").classList.remove("active");
+    $("#tabLearn").style.display = "block";
+    $("#tabCompare").style.display = "none";
+  };
+
+  // Run Compare button
+  $("#compare").onclick = () => {
+    $("#tabBtnCompare").click();
+    runComparison();
+    $("#tabCompare").scrollIntoView({ behavior: "smooth" });
+  };
+  $("#btnRunCompare").onclick = runComparison;
+
+  // Learning Mode side buttons
+  $$(".learn-algo-btn").forEach(btn => {
+    btn.onclick = () => {
+      $$(".learn-algo-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      renderLearningCard(btn.dataset.algo);
+    };
+  });
+}
+
+// Window resize handler (debounced)
+let resizeTimeout;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeTimeout);
+  resizeTimeout = setTimeout(() => {
+    const targetCols = window.innerWidth < 768 ? 27 : 45;
+    const targetRows = window.innerWidth < 768 ? 20 : 22;
+    if (targetCols !== COLS || targetRows !== ROWS) {
+      COLS = targetCols;
+      ROWS = targetRows;
+      startR = Math.floor(ROWS / 2);
+      startC = Math.floor(COLS * 0.18);
+      endR = Math.floor(ROWS / 2);
+      endC = Math.floor(COLS * 0.82);
+      build();
+      resetStats();
+      $("#statusDetails").textContent = `Grid size: ${COLS} × ${ROWS}`;
+    }
+  }, 200);
+});
+
+/* ==========================================================================
+   MODULE 2: MODE SWITCHER & SUDOKU BACKTRACKING VISUALIZER
+   ========================================================================== */
+
+let currentAppMode = "home"; // "home", "pathfinding", "sudoku", or "projects"
+
+function switchAppMode(targetMode, updateHash = true) {
+  if (targetMode === currentAppMode) return;
+  currentAppMode = targetMode;
+
+  const homeView = $("#viewHome");
+  const pathfindingView = $("#viewPathfinding");
+  const sudokuView = $("#viewSudoku");
+  const projectsView = $("#viewProjects");
+
+  const navHome = $("#btnNavHome");
+  const navPathlab = $("#btnNavPathlab");
+  const navSudoku = $("#btnNavSudoku");
+  const navProjects = $("#btnNavProjects");
+
+  const quickSwitchBtn = $("#btnQuickSwitch");
+  const quickSwitchIcon = $("#quickSwitchIcon");
+  const quickSwitchText = $("#quickSwitchText");
+
+  // Reset all nav tabs
+  navHome.classList.remove("active");
+  navHome.setAttribute("aria-selected", "false");
+  navPathlab.classList.remove("active");
+  navPathlab.setAttribute("aria-selected", "false");
+  navSudoku.classList.remove("active");
+  navSudoku.setAttribute("aria-selected", "false");
+  navProjects.classList.remove("active");
+  navProjects.setAttribute("aria-selected", "false");
+
+  // Hide all views
+  homeView.style.display = "none";
+  pathfindingView.style.display = "none";
+  sudokuView.style.display = "none";
+  projectsView.style.display = "none";
+
+  if (targetMode === "pathfinding") {
+    pathfindingView.style.display = "block";
+    navPathlab.classList.add("active");
+    navPathlab.setAttribute("aria-selected", "true");
+
+    quickSwitchIcon.textContent = "🧩";
+    quickSwitchText.textContent = "Switch to Sudoku Solver";
+    quickSwitchBtn.classList.add("btn-primary");
+    quickSwitchBtn.classList.remove("btn-warning");
+    quickSwitchBtn.setAttribute("data-tooltip", "Switch to Sudoku Backtracking Solver");
+
+    if (updateHash) window.location.hash = "pathfinder";
+  } else if (targetMode === "sudoku") {
+    sudokuView.style.display = "block";
+    navSudoku.classList.add("active");
+    navSudoku.setAttribute("aria-selected", "true");
+
+    quickSwitchIcon.textContent = "🗺️";
+    quickSwitchText.textContent = "Switch to Path Finder";
+    quickSwitchBtn.classList.remove("btn-primary");
+    quickSwitchBtn.classList.add("btn-warning");
+    quickSwitchBtn.setAttribute("data-tooltip", "Switch back to Pathfinding Visualizer");
+
+    if (!sudokuInitialized) {
+      initSudokuModule();
+    }
+    if (updateHash) window.location.hash = "sudoku";
+  } else if (targetMode === "projects") {
+    projectsView.style.display = "block";
+    navProjects.classList.add("active");
+    navProjects.setAttribute("aria-selected", "true");
+
+    quickSwitchIcon.textContent = "🗺️";
+    quickSwitchText.textContent = "Launch Path Finder";
+    quickSwitchBtn.classList.add("btn-primary");
+    quickSwitchBtn.classList.remove("btn-warning");
+    quickSwitchBtn.setAttribute("data-tooltip", "Launch Pathfinding Visualizer");
+
+    if (window._renderProjectsDashboard) window._renderProjectsDashboard();
+    if (updateHash) window.location.hash = "projects";
+  } else {
+    // targetMode === "home"
+    homeView.style.display = "block";
+    navHome.classList.add("active");
+    navHome.setAttribute("aria-selected", "true");
+
+    quickSwitchIcon.textContent = "🗺️";
+    quickSwitchText.textContent = "Launch Path Finder";
+    quickSwitchBtn.classList.add("btn-primary");
+    quickSwitchBtn.classList.remove("btn-warning");
+    quickSwitchBtn.setAttribute("data-tooltip", "Launch Pathfinding Visualizer");
+
+    if (updateHash) window.location.hash = "home";
+  }
+}
+
+// Navigation event listeners
+$("#btnNavHome").addEventListener("click", () => switchAppMode("home"));
+$("#btnNavPathlab").addEventListener("click", () => switchAppMode("pathfinding"));
+$("#btnNavSudoku").addEventListener("click", () => switchAppMode("sudoku"));
+$("#btnNavProjects").addEventListener("click", () => switchAppMode("projects"));
+
+$("#brandHomeLink").addEventListener("click", () => switchAppMode("home"));
+
+$("#btnLaunchPathFromHub").addEventListener("click", () => switchAppMode("pathfinding"));
+$("#btnLaunchSudokuFromHub").addEventListener("click", () => switchAppMode("sudoku"));
+
+$("#btnQuickSwitch").addEventListener("click", () => {
+  if (currentAppMode === "home") {
+    switchAppMode("pathfinding");
+  } else if (currentAppMode === "pathfinding") {
+    switchAppMode("sudoku");
+  } else {
+    switchAppMode("pathfinding");
+  }
+});
+
+// Hash routing support
+function handleHashRoute() {
+  const hash = window.location.hash.replace("#", "").toLowerCase();
+  if (hash === "pathfinder" || hash === "pathfinding") {
+    switchAppMode("pathfinding", false);
+  } else if (hash === "sudoku") {
+    switchAppMode("sudoku", false);
+  } else if (hash === "projects") {
+    switchAppMode("projects", false);
+  } else {
+    switchAppMode("home", false);
+  }
+}
+window.addEventListener("hashchange", handleHashRoute);
+
+// Theme Toggle Support
+(function setupTheme() {
+  const themeBtn = $("#btnThemeToggle");
+  const themeIcon = $("#themeToggleIcon");
+  const themeLabel = $("#themeToggleLabel");
+  const htmlEl = document.documentElement;
+
+  const savedTheme = localStorage.getItem("algo_vis_theme") || "dark";
+  applyTheme(savedTheme);
+
+  function applyTheme(theme) {
+    htmlEl.setAttribute("data-theme", theme);
+    localStorage.setItem("algo_vis_theme", theme);
+    if (theme === "light") {
+      themeIcon.textContent = "☀️";
+      themeLabel.textContent = "Light";
+      themeBtn.setAttribute("data-tooltip", "Switch to Dark Theme");
+    } else {
+      themeIcon.textContent = "🌙";
+      themeLabel.textContent = "Dark";
+      themeBtn.setAttribute("data-tooltip", "Switch to Light Theme");
+    }
+  }
+
+  themeBtn.addEventListener("click", () => {
+    const curr = htmlEl.getAttribute("data-theme") || "dark";
+    applyTheme(curr === "dark" ? "light" : "dark");
+  });
+})();
+
+// Initialize route from current hash if any
+handleHashRoute();
+
+/* ==========================================================================
+   SUDOKU BACKTRACKING VISUALIZER ENGINE
+   ========================================================================== */
+
+let sudokuInitialized = false;
+
+// Preset puzzle definitions
+const SUDOKU_PRESETS = {
+  easy: [
+    [5, 3, 0, 0, 7, 0, 0, 0, 0],
+    [6, 0, 0, 1, 9, 5, 0, 0, 0],
+    [0, 9, 8, 0, 0, 0, 0, 6, 0],
+    [8, 0, 0, 0, 6, 0, 0, 0, 3],
+    [4, 0, 0, 8, 0, 3, 0, 0, 1],
+    [7, 0, 0, 0, 2, 0, 0, 0, 6],
+    [0, 6, 0, 0, 0, 0, 2, 8, 0],
+    [0, 0, 0, 4, 1, 9, 0, 0, 5],
+    [0, 0, 0, 0, 8, 0, 0, 7, 9]
+  ],
+  medium: [
+    [0, 0, 0, 2, 6, 0, 7, 0, 1],
+    [6, 8, 0, 0, 7, 0, 0, 9, 0],
+    [1, 9, 0, 0, 0, 4, 5, 0, 0],
+    [8, 2, 0, 1, 0, 0, 0, 4, 0],
+    [0, 0, 4, 6, 0, 2, 9, 0, 0],
+    [0, 5, 0, 0, 0, 3, 0, 2, 8],
+    [0, 0, 9, 3, 0, 0, 0, 7, 4],
+    [0, 4, 0, 0, 5, 0, 0, 3, 6],
+    [7, 0, 3, 0, 1, 8, 0, 0, 0]
+  ],
+  hard: [
+    [0, 0, 0, 6, 0, 0, 4, 0, 0],
+    [7, 0, 0, 0, 0, 3, 6, 0, 0],
+    [0, 0, 0, 0, 9, 1, 0, 8, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 5, 0, 1, 8, 0, 0, 0, 3],
+    [0, 0, 0, 3, 0, 6, 0, 4, 5],
+    [0, 4, 0, 2, 0, 0, 0, 6, 0],
+    [9, 0, 3, 0, 0, 0, 0, 0, 0],
+    [0, 2, 0, 0, 0, 0, 1, 0, 0]
+  ],
+  escargot: [
+    [1, 0, 0, 0, 0, 7, 0, 9, 0],
+    [0, 3, 0, 0, 2, 0, 0, 0, 8],
+    [0, 0, 9, 6, 0, 0, 5, 0, 0],
+    [0, 0, 5, 3, 0, 0, 9, 0, 0],
+    [0, 1, 0, 0, 8, 0, 0, 0, 2],
+    [6, 0, 0, 0, 0, 4, 0, 0, 0],
+    [3, 0, 0, 0, 0, 0, 0, 1, 0],
+    [0, 4, 0, 0, 0, 0, 0, 0, 7],
+    [0, 0, 7, 0, 0, 0, 3, 0, 0]
+  ],
+  blank: Array(9).fill(0).map(() => Array(9).fill(0))
+};
+
+class SudokuState {
+  constructor() {
+    this.board = Array(9).fill(0).map(() => Array(9).fill(0));
+    this.given = Array(9).fill(false).map(() => Array(9).fill(false));
+    this.isSolving = false;
+    this.isPaused = false;
+    this.pauseResolver = null;
+    this.stepResolver = null;
+    this.cancelRequested = false;
+    this.speedMs = 8; // default fast
+    this.recursiveSteps = 0;
+    this.backtracks = 0;
+    this.startTime = 0;
+    this.timerInterval = null;
+  }
+
+  loadMatrix(matrix) {
+    this.stopSolving();
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        const val = matrix[r][c] || 0;
+        this.board[r][c] = val;
+        this.given[r][c] = val !== 0;
+      }
+    }
+    this.resetStats();
+  }
+
+  resetToGiven() {
+    this.stopSolving();
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        if (!this.given[r][c]) {
+          this.board[r][c] = 0;
+        }
+      }
+    }
+    this.resetStats();
+  }
+
+  clearAll() {
+    this.stopSolving();
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        this.board[r][c] = 0;
+        this.given[r][c] = false;
+      }
+    }
+    this.resetStats();
+  }
+
+  resetStats() {
+    this.recursiveSteps = 0;
+    this.backtracks = 0;
+    this.startTime = 0;
+    if (this.timerInterval) clearInterval(this.timerInterval);
+    this.timerInterval = null;
+    updateSudokuStatsUI(0);
+  }
+
+  stopSolving() {
+    if (this.isSolving) {
+      this.cancelRequested = true;
+      if (this.isPaused && this.pauseResolver) {
+        this.pauseResolver();
+      }
+    }
+  }
+
+  isValid(row, col, num) {
+    // Check row
+    for (let c = 0; c < 9; c++) {
+      if (c !== col && this.board[row][c] === num) return false;
+    }
+    // Check column
+    for (let r = 0; r < 9; r++) {
+      if (r !== row && this.board[r][col] === num) return false;
+    }
+    // Check 3x3 box
+    const boxR = Math.floor(row / 3) * 3;
+    const boxC = Math.floor(col / 3) * 3;
+    for (let r = boxR; r < boxR + 3; r++) {
+      for (let c = boxC; c < boxC + 3; c++) {
+        if ((r !== row || c !== col) && this.board[r][c] === num) return false;
+      }
+    }
+    return true;
+  }
+
+  findEmpty() {
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        if (this.board[r][c] === 0) return [r, c];
+      }
+    }
+    return null;
+  }
+
+  countFilled() {
+    let count = 0;
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        if (this.board[r][c] !== 0) count++;
+      }
+    }
+    return count;
+  }
+}
+
+const sudoku = new SudokuState();
+
+// Initialize the 9x9 DOM Table
+function initSudokuModule() {
+  sudokuInitialized = true;
+  const table = $("#sudokuTable");
+  table.innerHTML = "";
+
+  for (let r = 0; r < 9; r++) {
+    const tr = document.createElement("tr");
+    tr.className = "sudoku-row";
+    for (let c = 0; c < 9; c++) {
+      const td = document.createElement("td");
+      td.className = "sudoku-cell";
+      td.id = `sc_${r}_${c}`;
+      td.tabIndex = 0; // Focusable
+
+      if (c === 2 || c === 5) td.classList.add("col-bound");
+      if (r === 2 || r === 5) td.classList.add("row-bound");
+
+      // Cell interactions
+      td.addEventListener("focus", () => highlightSudokuCrosshair(r, c));
+      td.addEventListener("blur", clearSudokuCrosshair);
+
+      td.addEventListener("keydown", (e) => handleSudokuKeyDown(e, r, c));
+
+      tr.appendChild(td);
+    }
+    table.appendChild(tr);
+  }
+
+  // Load default medium preset
+  sudoku.loadMatrix(SUDOKU_PRESETS.medium);
+  renderSudokuBoardUI();
+
+  // Connect Controls
+  setupSudokuEvents();
+}
+
+// Highlight Row, Col, and 3x3 Box
+function highlightSudokuCrosshair(focusR, focusC) {
+  const boxR = Math.floor(focusR / 3) * 3;
+  const boxC = Math.floor(focusC / 3) * 3;
+
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      const el = $(`#sc_${r}_${c}`);
+      if (!el) continue;
+      el.classList.remove("highlight-crosshair", "highlight-box", "cell-focused");
+
+      if (r === focusR && c === focusC) {
+        el.classList.add("cell-focused");
+      } else if (r === focusR || c === focusC) {
+        el.classList.add("highlight-crosshair");
+      } else if (r >= boxR && r < boxR + 3 && c >= boxC && c < boxC + 3) {
+        el.classList.add("highlight-box");
+      }
+    }
+  }
+}
+
+function clearSudokuCrosshair() {
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      const el = $(`#sc_${r}_${c}`);
+      if (el) el.classList.remove("highlight-crosshair", "highlight-box", "cell-focused");
+    }
+  }
+}
+
+// Keyboard navigation and editing
+function handleSudokuKeyDown(e, r, c) {
+  if (sudoku.isSolving) return;
+
+  // Arrow key navigation
+  if (e.key === "ArrowUp" && r > 0) {
+    e.preventDefault();
+    $(`#sc_${r - 1}_${c}`).focus();
+    return;
+  }
+  if (e.key === "ArrowDown" && r < 8) {
+    e.preventDefault();
+    $(`#sc_${r + 1}_${c}`).focus();
+    return;
+  }
+  if (e.key === "ArrowLeft" && c > 0) {
+    e.preventDefault();
+    $(`#sc_${r}_${c - 1}`).focus();
+    return;
+  }
+  if (e.key === "ArrowRight" && c < 8) {
+    e.preventDefault();
+    $(`#sc_${r}_${c + 1}`).focus();
+    return;
+  }
+
+  // Clear / Backspace
+  if (e.key === "Backspace" || e.key === "Delete" || e.key === "0") {
+    e.preventDefault();
+    sudoku.board[r][c] = 0;
+    sudoku.given[r][c] = false;
+    renderSudokuCell(r, c);
+    checkAllSudokuConflicts();
+    updateSudokuProgressUI();
+    return;
+  }
+
+  // Number 1-9 input
+  const num = parseInt(e.key);
+  if (!isNaN(num) && num >= 1 && num <= 9) {
+    e.preventDefault();
+    sudoku.board[r][c] = num;
+    sudoku.given[r][c] = true;
+    renderSudokuCell(r, c);
+    checkAllSudokuConflicts();
+    updateSudokuProgressUI();
+  }
+}
+
+// Render single cell
+function renderSudokuCell(r, c, stateClass = null) {
+  const el = $(`#sc_${r}_${c}`);
+  if (!el) return;
+
+  const val = sudoku.board[r][c];
+  el.textContent = val !== 0 ? val : "";
+  el.className = "sudoku-cell";
+
+  if (c === 2 || c === 5) el.classList.add("col-bound");
+  if (r === 2 || r === 5) el.classList.add("row-bound");
+
+  if (stateClass) {
+    el.classList.add(stateClass);
+  } else if (val !== 0) {
+    el.classList.add(sudoku.given[r][c] ? "cell-given" : "cell-solved");
+  }
+}
+
+// Render entire board
+function renderSudokuBoardUI() {
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      renderSudokuCell(r, c);
+    }
+  }
+  checkAllSudokuConflicts();
+  updateSudokuProgressUI();
+}
+
+// Check for rule conflicts across board
+function checkAllSudokuConflicts() {
+  let hasConflict = false;
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      const val = sudoku.board[r][c];
+      const el = $(`#sc_${r}_${c}`);
+      if (!el) continue;
+
+      if (val !== 0 && !sudoku.isValid(r, c, val)) {
+        el.classList.add("cell-conflict");
+        hasConflict = true;
+      } else {
+        el.classList.remove("cell-conflict");
+      }
+    }
+  }
+
+  const details = $("#sudokuStatusDetails");
+  if (hasConflict) {
+    details.textContent = "⚠️ Rule Conflict: Duplicate number in Row, Column, or 3×3 Box!";
+    details.style.color = "var(--color-red)";
+  } else {
+    details.textContent = "Validation: 100% Rule-Compliant";
+    details.style.color = "var(--text-muted)";
+  }
+  return hasConflict;
+}
+
+// Progress and Stats UI
+function updateSudokuProgressUI() {
+  const filled = sudoku.countFilled();
+  $("#statSudokuFilled").textContent = `${filled} / 81`;
+  const pct = Math.round((filled / 81) * 100);
+  $("#statSudokuPercent").textContent = `${pct}% Filled`;
+}
+
+function updateSudokuStatsUI(elapsedMs) {
+  $("#statSudokuSteps").textContent = sudoku.recursiveSteps.toLocaleString();
+  $("#statSudokuBacktracks").textContent = sudoku.backtracks.toLocaleString();
+  $("#statSudokuTime").textContent = `${elapsedMs} ms`;
+  updateSudokuProgressUI();
+}
+
+// Solve Backtracking Algorithm with Live Animation
+async function solveSudokuWithVisualizer() {
+  if (sudoku.isSolving) return;
+
+  if (checkAllSudokuConflicts()) {
+    $("#sudokuStatusText").innerHTML = "<strong style='color:var(--color-red)'>Error:</strong> Please resolve red conflicts before solving!";
+    return;
+  }
+
+  sudoku.isSolving = true;
+  sudoku.cancelRequested = false;
+  sudoku.isPaused = false;
+  sudoku.recursiveSteps = 0;
+  sudoku.backtracks = 0;
+  sudoku.startTime = performance.now();
+
+  setSudokuControlsSolving(true);
+  $("#sudokuStatusText").innerHTML = "<strong>Solving:</strong> Exploring search tree via recursive backtracking...";
+
+  sudoku.timerInterval = setInterval(() => {
+    const elapsed = Math.round(performance.now() - sudoku.startTime);
+    updateSudokuStatsUI(elapsed);
+  }, 100);
+
+  const success = await recursiveSolve();
+
+  clearInterval(sudoku.timerInterval);
+  const totalElapsed = Math.round(performance.now() - sudoku.startTime);
+  updateSudokuStatsUI(totalElapsed);
+  setSudokuControlsSolving(false);
+  sudoku.isSolving = false;
+
+  if (sudoku.cancelRequested) {
+    $("#sudokuStatusText").innerHTML = "<strong>Cancelled:</strong> Solving was stopped by user.";
+  } else if (success) {
+    // Flash all solved cells in emerald green
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        renderSudokuCell(r, c, "cell-solved");
+      }
+    }
+    $("#sudokuStatusText").innerHTML = `<strong style="color:var(--color-green)">✓ Solved!</strong> Completed in <strong>${sudoku.recursiveSteps.toLocaleString()}</strong> decisions and <strong>${sudoku.backtracks.toLocaleString()}</strong> backtracks (${totalElapsed} ms).`;
+  } else {
+    $("#sudokuStatusText").innerHTML = "<strong style='color:var(--color-red)'>Unsolvable:</strong> No valid digit combination satisfies all constraints.";
+  }
+}
+
+// Recursive Backtracking function
+async function recursiveSolve() {
+  if (sudoku.cancelRequested) return false;
+
+  // Handle pause & step-by-step
+  if (sudoku.isPaused) {
+    await new Promise(resolve => {
+      sudoku.pauseResolver = resolve;
+    });
+    if (sudoku.cancelRequested) return false;
+  }
+
+  const emptyCell = sudoku.findEmpty();
+  if (!emptyCell) {
+    return true; // All 81 cells filled validly!
+  }
+
+  const [row, col] = emptyCell;
+
+  for (let num = 1; num <= 9; num++) {
+    if (sudoku.cancelRequested) return false;
+
+    if (sudoku.isValid(row, col, num)) {
+      sudoku.recursiveSteps++;
+      sudoku.board[row][col] = num;
+
+      // Animate candidate test
+      if (sudoku.speedMs > 0) {
+        renderSudokuCell(row, col, "cell-trial");
+        await sleep(sudoku.speedMs);
+      }
+
+      if (await recursiveSolve()) {
+        return true;
+      }
+
+      // Backtrack
+      if (sudoku.cancelRequested) return false;
+      sudoku.backtracks++;
+      sudoku.board[row][col] = 0;
+
+      // Animate backtrack rollback
+      if (sudoku.speedMs > 0) {
+        renderSudokuCell(row, col, "cell-backtrack");
+        await sleep(sudoku.speedMs);
+      }
+    }
+  }
+
+  renderSudokuCell(row, col);
+  return false;
+}
+
+// Control UI state transitions
+function setSudokuControlsSolving(solving) {
+  $("#btnSudokuSolve").disabled = solving;
+  $("#btnSudokuPause").disabled = !solving;
+  $("#btnSudokuStep").disabled = !solving || !sudoku.isPaused;
+  $("#btnSudokuStop").disabled = !solving;
+  $("#btnSudokuReset").disabled = solving;
+  $("#btnSudokuClear").disabled = solving;
+  $("#btnSudokuGenerate").disabled = solving;
+  $("#selSudokuPreset").disabled = solving;
+  $("#selSudokuDifficulty").disabled = solving;
+
+  $("#sudokuPauseIcon").textContent = "⏸";
+  $("#sudokuPauseText").textContent = "Pause";
+}
+
+// Setup Event Listeners for Sudoku controls
+function setupSudokuEvents() {
+  // Solve
+  $("#btnSudokuSolve").addEventListener("click", solveSudokuWithVisualizer);
+
+  // Pause / Resume
+  $("#btnSudokuPause").addEventListener("click", () => {
+    if (!sudoku.isSolving) return;
+    sudoku.isPaused = !sudoku.isPaused;
+
+    if (sudoku.isPaused) {
+      $("#sudokuPauseIcon").textContent = "▶";
+      $("#sudokuPauseText").textContent = "Resume";
+      $("#btnSudokuStep").disabled = false;
+      $("#sudokuStatusText").innerHTML = "<strong>Paused:</strong> Use <em>Step</em> to advance one decision or <em>Resume</em> to continue.";
+    } else {
+      $("#sudokuPauseIcon").textContent = "⏸";
+      $("#sudokuPauseText").textContent = "Pause";
+      $("#btnSudokuStep").disabled = true;
+      $("#sudokuStatusText").innerHTML = "<strong>Solving:</strong> Resumed search...";
+      if (sudoku.pauseResolver) sudoku.pauseResolver();
+    }
+  });
+
+  // Step
+  $("#btnSudokuStep").addEventListener("click", () => {
+    if (sudoku.isSolving && sudoku.isPaused && sudoku.pauseResolver) {
+      sudoku.pauseResolver();
+    }
+  });
+
+  // Stop
+  $("#btnSudokuStop").addEventListener("click", () => {
+    sudoku.stopSolving();
+  });
+
+  // Speed Slider
+  const sldSpeed = $("#sldSudokuSpeed");
+  const lblSpeed = $("#lblSudokuSpeed");
+  const speedLabels = ["Slow (120ms)", "Normal (35ms)", "Fast (8ms)", "Instant (0ms)"];
+  const speedValues = [120, 35, 8, 0];
+
+  sldSpeed.addEventListener("input", (e) => {
+    const idx = parseInt(e.target.value);
+    sudoku.speedMs = speedValues[idx];
+    lblSpeed.textContent = speedLabels[idx];
+  });
+
+  // Preset Puzzles
+  $("#selSudokuPreset").addEventListener("change", (e) => {
+    const val = e.target.value;
+    if (SUDOKU_PRESETS[val]) {
+      sudoku.loadMatrix(SUDOKU_PRESETS[val]);
+      renderSudokuBoardUI();
+      $("#sudokuStatusText").innerHTML = `<strong>Loaded:</strong> ${e.target.options[e.target.selectedIndex].text}`;
+    }
+  });
+
+  // Reset to initial clues
+  $("#btnSudokuReset").addEventListener("click", () => {
+    sudoku.resetToGiven();
+    renderSudokuBoardUI();
+    $("#sudokuStatusText").innerHTML = "<strong>Reset:</strong> Cleared solver exploration steps, restored initial clues.";
+  });
+
+  // Clear all
+  $("#btnSudokuClear").addEventListener("click", () => {
+    sudoku.clearAll();
+    renderSudokuBoardUI();
+    $("#selSudokuPreset").value = "blank";
+    $("#sudokuStatusText").innerHTML = "<strong>Cleared:</strong> Board empty. Click cells and type digits 1–9 to input a custom puzzle.";
+  });
+
+  // Generate Puzzle
+  $("#btnSudokuGenerate").addEventListener("click", () => {
+    generateRandomSudoku();
+  });
+
+  // Close Guide Card
+  $("#btnCloseSudokuGuide").addEventListener("click", () => {
+    $("#sudokuGuideCard").style.display = "none";
+  });
+}
+
+// Random Solvable Sudoku Generator
+function generateRandomSudoku() {
+  sudoku.stopSolving();
+  const diff = $("#selSudokuDifficulty").value;
+  // blanks to remove: easy: 35, medium: 46, hard: 53, expert: 57
+  const blanksMap = { easy: 35, medium: 46, hard: 53, expert: 57 };
+  const blanks = blanksMap[diff] || 46;
+
+  // 1. Fill board with valid random solution
+  sudoku.clearAll();
+
+  function fillGrid(r = 0, c = 0) {
+    if (r === 9) return true;
+    const nextR = c === 8 ? r + 1 : r;
+    const nextC = c === 8 ? 0 : c + 1;
+
+    const nums = [1, 2, 3, 4, 5, 6, 7, 8, 9].sort(() => Math.random() - 0.5);
+    for (const num of nums) {
+      if (sudoku.isValid(r, c, num)) {
+        sudoku.board[r][c] = num;
+        if (fillGrid(nextR, nextC)) return true;
+        sudoku.board[r][c] = 0;
+      }
+    }
+    return false;
+  }
+
+  fillGrid();
+
+  // 2. Remove cells to create puzzle
+  const positions = [];
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      positions.push([r, c]);
+    }
+  }
+  positions.sort(() => Math.random() - 0.5);
+
+  for (let i = 0; i < blanks; i++) {
+    const [r, c] = positions[i];
+    sudoku.board[r][c] = 0;
+  }
+
+  // 3. Set remaining as given clues
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      sudoku.given[r][c] = sudoku.board[r][c] !== 0;
+    }
+  }
+
+  renderSudokuBoardUI();
+  $("#selSudokuPreset").value = diff;
+  $("#sudokuStatusText").innerHTML = `<strong>Generated:</strong> New ${diff.toUpperCase()} puzzle (${81 - blanks} clues). Ready to solve!`;
+}
+
+/* Startup */
+build();
+initEvents();
+updateAlgoInfoCard();
+updateSpeedLabel();
+renderLearningCard("astar");
+</script>
+
+<!-- ===== Projects Module Modals ===== -->
+
+<!-- Save Project Modal -->
+<div class="proj-modal-overlay" id="projSaveModal" role="dialog" aria-modal="true" aria-labelledby="projSaveTitle" style="display:none;">
+  <div class="proj-modal">
+    <h3 id="projSaveTitle">💾 Save Project</h3>
+    <label for="projSaveNameInput" style="display:block;margin-bottom:6px;font-size:13px;color:var(--text-secondary);">Project Name</label>
+    <input type="text" id="projSaveNameInput" maxlength="80" placeholder="Enter a name for this project…" autocomplete="off"
+      style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border-subtle);background:var(--bg-surface);color:var(--text-primary);font-size:14px;box-sizing:border-box;outline:none;" />
+    <div id="projSaveError" style="color:var(--color-red,#ff6b6b);font-size:12px;margin-top:6px;min-height:18px;"></div>
+    <div class="proj-modal-actions">
+      <button class="btn" id="projSaveCancel">Cancel</button>
+      <button class="btn btn-primary" id="projSaveConfirm">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="proj-modal-overlay" id="projDeleteModal" role="dialog" aria-modal="true" style="display:none;">
+  <div class="proj-modal">
+    <h3>🗑️ Delete Project</h3>
+    <p id="projDeleteMsg" style="color:var(--text-secondary);font-size:14px;margin-bottom:16px;"></p>
+    <div class="proj-modal-actions">
+      <button class="btn" id="projDeleteCancel">Cancel</button>
+      <button class="btn btn-danger" id="projDeleteConfirm">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Notification -->
+<div class="proj-toast" id="projToast" role="status" aria-live="polite" style="display:none;"></div>
+
+<!-- Hidden import file input -->
+<input type="file" id="projImportFileInput" accept=".json,application/json" style="display:none;" aria-hidden="true" />
+
+<script src="projects.js"></script>
+<script src="enhance.js"></script>
+<script src="games.js"></script>
+</body>
+</html>
