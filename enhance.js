@@ -1,4 +1,4 @@
-/* PATHLAB enhancement layer: interactivity */
+/* AlgoLab enhancement layer: interactivity */
 (function(){
 'use strict';
 const q=(s,r=document)=>r.querySelector(s), qa=(s,r=document)=>[...r.querySelectorAll(s)];

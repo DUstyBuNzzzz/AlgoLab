@@ -1,5 +1,5 @@
 /**
- * Algorithm Visualizer - Unified Local Development Server
+ * AlgoLab - Unified Local Development Server
  * Zero-dependency static file server using Node.js standard libraries.
  */
 
@@ -67,7 +67,7 @@ function handleRequest(req, res) {
   fs.stat(safePath, (err, stats) => {
     if (err) {
       res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(`<!DOCTYPE html><html><head><title>404 Not Found</title></head><body style="font-family:sans-serif;padding:32px;"><h2>404 Not Found</h2><p>The requested URL <code>${pathname}</code> was not found on this server.</p><p><a href="/">Return to Algorithm Visualizer Hub</a></p></body></html>`);
+      res.end(`<!DOCTYPE html><html><head><title>404 Not Found</title></head><body style="font-family:sans-serif;padding:32px;"><h2>404 Not Found</h2><p>The requested URL <code>${pathname}</code> was not found on this server.</p><p><a href="/">Return to AlgoLab Hub</a></p></body></html>`);
       return;
     }
 
@@ -78,7 +78,7 @@ function handleRequest(req, res) {
     fs.readFile(safePath, (readErr, content) => {
       if (readErr) {
         res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
-        res.end(`<!DOCTYPE html><html><head><title>404 Not Found</title></head><body style="font-family:sans-serif;padding:32px;"><h2>404 Not Found</h2><p>File not found: <code>${pathname}</code></p><p><a href="/">Return to Algorithm Visualizer Hub</a></p></body></html>`);
+        res.end(`<!DOCTYPE html><html><head><title>404 Not Found</title></head><body style="font-family:sans-serif;padding:32px;"><h2>404 Not Found</h2><p>File not found: <code>${pathname}</code></p><p><a href="/">Return to AlgoLab Hub</a></p></body></html>`);
         return;
       }
 
@@ -110,7 +110,7 @@ function startServer(portToTry) {
   server.listen(portToTry, () => {
     const url = `http://localhost:${portToTry}`;
     console.log('='.repeat(60));
-    console.log(`  ALGORITHM VISUALIZER - UNIFIED APPLICATION SERVER`);
+    console.log(`  ALGOLAB - UNIFIED APPLICATION SERVER`);
     console.log('='.repeat(60));
     console.log(`  > Application:    ${url}`);
     console.log(`  > Home Hub:       ${url}/#home`);

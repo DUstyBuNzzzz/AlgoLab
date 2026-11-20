@@ -1,8 +1,9 @@
-# Algorithm Visualizer
+# AlgoLab
 
-A unified, interactive single-page application merging two complete algorithmic laboratories into one seamless project:
+A unified, interactive single-page application merging algorithmic laboratories into one seamless suite:
 1. **Path Finder** (Graph Traversal & Shortest Path Heuristics)
 2. **Sudoku Solver** (Constraint Satisfaction & Recursive Backtracking)
+3. **AI Game Arena** (Minimax & Alpha-Beta Pruning)
 
 ---
 
@@ -14,17 +15,21 @@ Launch the unified project with one command:
 npm start
 ```
 
-This starts a lightweight, zero-dependency local development server and automatically opens the **Algorithm Visualizer** at `http://localhost:3000`.
+This starts a lightweight, zero-dependency local development server and automatically opens **AlgoLab** at `http://localhost:3000`.
 
 Alternatively, you can simply double-click `index.html` or open it in any modern browser without any server or installation.
 
 ---
 
-## 📁 Merged Project Structure
+## 📁 Project Structure
 
 ```text
-PATHLAB-updated/
+AlgoLab/
 ├── index.html                   # Unified Single-Page Application (Landing Hub + Path Finder + Sudoku Solver)
+├── enhance.css                  # Modern UI styling & theme definitions
+├── enhance.js                   # Interactive particle canvas & command palette
+├── games.js                     # Game Arena with Minimax & Alpha-Beta pruning
+├── projects.js                  # Save & Load project state manager
 ├── server.js                    # Zero-dependency local development server
 ├── package.json                 # Consolidated scripts (start)
 └── README.md                    # Project documentation
@@ -34,7 +39,7 @@ PATHLAB-updated/
 
 ## 🚀 Unified Features & Views
 
-The entire suite runs within [index.html](file:///A:/SEM_5/EAI/Project/PATHLAB-updated/index.html) with fast, responsive tab navigation and URL hash routing:
+The entire suite runs within [index.html](file:///A:/SEM_5/EAI/Project/AlgoLab/index.html) with fast, responsive tab navigation and URL hash routing:
 
 ### 1. Home Hub (`/#home`)
 - Landing page with overview of both tools.

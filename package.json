@@ -1,12 +1,12 @@
 {
-  "name": "algorithm-visualizer",
+  "name": "algolab",
   "version": "1.0.0",
-  "description": "Algorithm Visualizer - Merged unified interactive suite featuring Path Finder and Sudoku Solver",
+  "description": "AlgoLab - Interactive algorithm visualizer suite featuring Pathfinding, Sudoku Solver, and Game AI",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "serve": "node server.js",
-    "test": "node -e \"console.log('Algorithm Visualizer ready')\""
+    "test": "node -e \"console.log('AlgoLab ready')\""
   },
   "keywords": [
     "algorithm",

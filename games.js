@@ -1,4 +1,4 @@
-/* PATHLAB Game Arena: Tic-Tac-Toe & Connect-4 with Minimax + Alpha-Beta */
+/* AlgoLab Game Arena: Tic-Tac-Toe & Connect-4 with Minimax + Alpha-Beta */
 (function(root){
 'use strict';
 function mkLines(R,C,N){const L=[];const D=[[0,1],[1,0],[1,1],[1,-1]];

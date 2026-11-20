@@ -1,5 +1,5 @@
 /**
- * PATHLAB — Save & Load Projects Module
+ * AlgoLab — Save & Load Projects Module
  * 
  * Architecture: IndexedDB for persistence (algviz_projects DB, projects store).
  * Integration: Reads/writes the same global variables that the main app uses:
